@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const start = parseDate(searchParams.get("start"));
     const end = parseDate(searchParams.get("end"));
-    const raw = await loadRawData();
+    const forceRefresh = searchParams.get("refresh") === "1";
+    const raw = await loadRawData(forceRefresh);
     const today = new Date().toISOString().slice(0, 10);
     const data = computeDashboard(raw, { start, end }, today);
     return NextResponse.json(data);

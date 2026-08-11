@@ -124,8 +124,8 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
  * Load raw data, preferring live Snowflake (when SNOWFLAKE_* env vars are
  * set) with an in-memory cache, falling back to the bundled snapshot.
  */
-export async function loadRawData(): Promise<RawData> {
-  if (cache && cache.expiresAt > Date.now()) return cache.data;
+export async function loadRawData(forceRefresh = false): Promise<RawData> {
+  if (!forceRefresh && cache && cache.expiresAt > Date.now()) return cache.data;
   const useSnapshot = process.env.USE_SNAPSHOT === "1";
   let data: RawData | null = null;
   if (!useSnapshot) {

@@ -19,31 +19,42 @@ export default function Dashboard() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [domainFilter, setDomainFilter] = useState("all");
+  const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async (startDate: string, endDate: string) => {
-    setState({ kind: "loading" });
-    try {
-      const params = new URLSearchParams();
-      if (startDate) params.set("start", startDate);
-      if (endDate) params.set("end", endDate);
-      const res = await fetch(`/api/dashboard?${params.toString()}`);
-      const body: unknown = await res.json();
-      if (!res.ok) {
-        const message =
-          typeof body === "object" && body !== null && "error" in body
-            ? String((body as { error: unknown }).error)
-            : `Request failed (${res.status})`;
-        setState({ kind: "error", message });
-        return;
+  const load = useCallback(
+    async (startDate: string, endDate: string, refresh = false) => {
+      if (refresh) {
+        setRefreshing(true);
+      } else {
+        setState({ kind: "loading" });
       }
-      setState({ kind: "ready", data: body as DashboardData });
-    } catch (error) {
-      setState({
-        kind: "error",
-        message: error instanceof Error ? error.message : "Failed to load",
-      });
-    }
-  }, []);
+      try {
+        const params = new URLSearchParams();
+        if (startDate) params.set("start", startDate);
+        if (endDate) params.set("end", endDate);
+        if (refresh) params.set("refresh", "1");
+        const res = await fetch(`/api/dashboard?${params.toString()}`);
+        const body: unknown = await res.json();
+        if (!res.ok) {
+          const message =
+            typeof body === "object" && body !== null && "error" in body
+              ? String((body as { error: unknown }).error)
+              : `Request failed (${res.status})`;
+          setState({ kind: "error", message });
+          return;
+        }
+        setState({ kind: "ready", data: body as DashboardData });
+      } catch (error) {
+        setState({
+          kind: "error",
+          message: error instanceof Error ? error.message : "Failed to load",
+        });
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     void load("", "");
@@ -112,6 +123,18 @@ export default function Dashboard() {
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Reset
+          </button>
+          <button
+            type="button"
+            title="Refresh data"
+            aria-label="Refresh data"
+            disabled={refreshing}
+            onClick={() => void load(start, end, true)}
+            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <span className={refreshing ? "inline-block animate-spin" : ""}>
+              ⟳
+            </span>
           </button>
         </form>
       </header>
