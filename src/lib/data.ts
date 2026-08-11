@@ -1,9 +1,23 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { getSnowflakeConfig, runQueries } from "./snowflake";
-import { EVENTS_SQL, STATUSES_SQL, TIMERS_SQL } from "./queries";
+import {
+  EVENTS_SQL,
+  PAYOUTS_SQL,
+  STATUSES_SQL,
+  TIMERS_SQL,
+  USERS_SQL,
+} from "./queries";
 import { fetchStudioStatuses } from "./studio";
-import type { RawData, Role, TaskEvent, TaskStatusRow, TimerRow } from "./types";
+import type {
+  PayoutRow,
+  RawData,
+  Role,
+  TaskEvent,
+  TaskStatusRow,
+  TimerRow,
+  UserInfo,
+} from "./types";
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
@@ -61,6 +75,32 @@ function parseTimer(row: Record<string, unknown>): TimerRow | null {
   return { userId, timer: timer as Role, date, hours };
 }
 
+function parsePayout(row: Record<string, unknown>): PayoutRow | null {
+  const userId = asString(row.userId);
+  const date = asString(row.date);
+  const payable = asNumber(row.payable);
+  const hours = asNumber(row.hours);
+  if (!userId || !date || payable === null || hours === null) return null;
+  return {
+    userId,
+    date,
+    payable,
+    hours,
+    writerHours: asNumber(row.writerHours) ?? 0,
+    reviewerHours: asNumber(row.reviewerHours) ?? 0,
+  };
+}
+
+function parseUser(row: Record<string, unknown>): UserInfo | null {
+  const userId = asString(row.userId);
+  if (!userId) return null;
+  return {
+    userId,
+    name: asString(row.name),
+    email: asString(row.email),
+  };
+}
+
 function parseRows<T>(
   rows: unknown,
   parse: (row: Record<string, unknown>) => T | null,
@@ -79,15 +119,19 @@ function parseRows<T>(
 async function fetchFromSnowflake(): Promise<RawData | null> {
   const config = getSnowflakeConfig();
   if (!config) return null;
-  const [events, statuses, timers] = await runQueries(config, [
+  const [events, statuses, timers, payouts, users] = await runQueries(config, [
     EVENTS_SQL,
     STATUSES_SQL,
     TIMERS_SQL,
+    PAYOUTS_SQL,
+    USERS_SQL,
   ]);
   return {
     events: parseRows(events, parseEvent),
     statuses: parseRows(statuses, parseStatus),
     timers: parseRows(timers, parseTimer),
+    payouts: parseRows(payouts, parsePayout),
+    users: parseRows(users, parseUser),
     fetchedAt: new Date().toISOString(),
     source: "snowflake",
     liveStatuses: false,
@@ -106,6 +150,8 @@ async function loadSnapshot(): Promise<RawData> {
     events: parseRows(obj.events, parseEvent),
     statuses: parseRows(obj.statuses, parseStatus),
     timers: parseRows(obj.timers, parseTimer),
+    payouts: parseRows(obj.payouts, parsePayout),
+    users: parseRows(obj.users, parseUser),
     fetchedAt: asString(obj.fetchedAt) ?? "unknown",
     source: "snapshot",
     liveStatuses: false,

@@ -49,7 +49,7 @@ snapshot.
 
 ## Data sources
 
-The dashboard runs three read-only queries (see `src/lib/queries.ts`):
+The dashboard runs five read-only queries (see `src/lib/queries.ts`):
 
 1. **Unit events** — `PROJECT_ANALYTICS.CENTRALIZED.CONSOLIDATED_TASK_VERSIONS`
    filtered to the project: one row per task version authored by a
@@ -62,6 +62,15 @@ The dashboard runs three read-only queries (see `src/lib/queries.ts`):
    (Insightful time tracking), daily hours per user for exactly two timers:
    - `Skillsbench - Task` → writer hours
    - `Task Review-SkillsBench` → reviewer hours
+4. **Hours & payable spend** —
+   `PROJECT_ANALYTICS.CENTRALIZED.CONTRACTOR_HOURS_PAYOUTS_ROLE_BASED`
+   filtered to the project: daily payable amount and role-split duration
+   hours per contributor. Powers the Total Hours / Total Payable KPIs, the
+   Hours Logged and Daily Payable Spend charts, contributor writer/reviewer
+   hours, and the Expert Roster.
+5. **Identity map** — task-version authors plus
+   `ANALYTICS_DATABASE.AURORA_MERCOR_PRODUCTION.MERCORUSERS` provide
+   contributor names and emails for the contributor and roster tables.
 
 All timestamps are normalized to **UTC** in SQL; every date bucket and
 rolling window uses UTC calendar days.

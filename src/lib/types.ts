@@ -30,10 +30,30 @@ export interface TimerRow {
   hours: number;
 }
 
+/** Daily payable/hours per user (from contractor payout marts). */
+export interface PayoutRow {
+  userId: string;
+  /** UTC date, YYYY-MM-DD. */
+  date: string;
+  payable: number;
+  hours: number;
+  writerHours: number;
+  reviewerHours: number;
+}
+
+/** Identity map for contributor names/emails. */
+export interface UserInfo {
+  userId: string;
+  name: string | null;
+  email: string | null;
+}
+
 export interface RawData {
   events: TaskEvent[];
   statuses: TaskStatusRow[];
   timers: TimerRow[];
+  payouts: PayoutRow[];
+  users: UserInfo[];
   fetchedAt: string;
   source: "snowflake" | "snapshot";
   /** True when current task statuses were fetched live from the Studio API. */
@@ -147,4 +167,109 @@ export interface DashboardData {
   rolling7: Rolling7DayMetrics;
   experts: ExpertMetrics[];
   statusBreakdown: StatusBreakdownRow[];
+}
+
+// ---------------------------------------------------------------------------
+// v2 dashboard (Project Performance) payload
+// ---------------------------------------------------------------------------
+
+/** A KPI value plus an optional trend vs. the previous 7-day period. */
+export interface KpiValue {
+  value: number | null;
+  /** Last-7-days value, when available. */
+  last7: number | null;
+  /** Previous-7-days value, when available. */
+  prev7: number | null;
+}
+
+export interface DailySeriesPoint {
+  date: string;
+  oneShotRate: number | null;
+  oneShotRate7d: number | null;
+  submittedUnits: number;
+  submittedUnits7d: number;
+  approvedUnits: number;
+  approvedUnits7d: number;
+  writerUnits: number;
+  writerUnits7d: number;
+  reviewerUnits: number;
+  reviewerUnits7d: number;
+  hours: number;
+  hours7d: number;
+  payable: number;
+  payable7d: number;
+}
+
+export interface PipelineStage {
+  stage: string;
+  units: number;
+}
+
+export interface ReviewAttemptBucket {
+  bucket: string;
+  approvedUnits: number;
+  share: number | null;
+}
+
+export interface ContributorRow {
+  userId: string;
+  name: string;
+  email: string | null;
+  world: string;
+  tasksWritten: number;
+  tasksApproved: number;
+  writerHours: number;
+  writerAht: number | null;
+  reviewerUnits: number;
+  reviewerHours: number;
+  reviewerAht: number | null;
+  oneShotRate: number | null;
+}
+
+export interface RosterRow {
+  userId: string;
+  name: string;
+  email: string | null;
+  world: string;
+  hours: number;
+  payable: number;
+  ratePerHour: number | null;
+  lastActive: string | null;
+  inactive: boolean;
+}
+
+export interface DashboardV2Data {
+  campaignName: string;
+  projectId: string;
+  fetchedAt: string;
+  source: "snowflake" | "snapshot";
+  liveStatuses: boolean;
+  filters: {
+    start: string | null;
+    end: string | null;
+    world: string | null;
+    expert: string | null;
+    email: string | null;
+  };
+  worlds: string[];
+  kpis: {
+    totalHours: KpiValue;
+    totalPayable: KpiValue;
+    approvedUnits: KpiValue;
+    approvedAht: KpiValue;
+  };
+  daily: DailySeriesPoint[];
+  pipeline: PipelineStage[];
+  quality: {
+    oneShotRate: number | null;
+    reworkRate: number | null;
+  };
+  reviewAttempts: ReviewAttemptBucket[];
+  contributors: ContributorRow[];
+  spend: {
+    totalPayable: number;
+    payableLast7Days: number;
+    averageRatePerHour: number | null;
+  };
+  roster: RosterRow[];
 }

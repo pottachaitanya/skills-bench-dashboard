@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Skills Bench Analytics",
+  title: "Skills Bench — Project Performance Dashboard",
   description:
-    "Analytics dashboard for the Skills Bench campaign (Studio / Mercor)",
+    "Writer productivity, review quality, throughput, hours, and spend for the Skills Bench campaign (Studio / Mercor)",
 };
 
 export default function RootLayout({
