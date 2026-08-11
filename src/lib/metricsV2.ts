@@ -189,6 +189,9 @@ export function computeDashboardV2(
   const payouts = raw.payouts.filter(
     (row) => inWindow(row.date, window) && userAllowed(row.userId),
   );
+  const timers = raw.timers.filter(
+    (row) => inWindow(row.date, window) && userAllowed(row.userId),
+  );
 
   const oneShots = oneShotByTask(events);
   const firstApprovals = firstApprovalByTask(events);
@@ -458,6 +461,24 @@ export function computeDashboardV2(
       agg.lastActive = payout.date;
     }
   }
+  // The payout mart's role split is often zero-filled; fall back to the
+  // campaign timer logs for per-user writer/reviewer hours in that case.
+  const timerHoursByUser = new Map<
+    string,
+    { writer: number; reviewer: number }
+  >();
+  for (const timer of timers) {
+    let agg = timerHoursByUser.get(timer.userId);
+    if (!agg) {
+      agg = { writer: 0, reviewer: 0 };
+      timerHoursByUser.set(timer.userId, agg);
+    }
+    if (timer.timer === "writer") {
+      agg.writer += timer.hours;
+    } else {
+      agg.reviewer += timer.hours;
+    }
+  }
 
   const contributors: ContributorRow[] = [];
   for (const userId of contributorIds) {
@@ -481,8 +502,9 @@ export function computeDashboardV2(
       approvedTaskIds.has(taskId),
     ).length;
     const payout = payoutByUser.get(userId);
-    const writerHours = payout?.writerHours ?? 0;
-    const reviewerHours = payout?.reviewerHours ?? 0;
+    const timerHours = timerHoursByUser.get(userId);
+    const writerHours = payout?.writerHours || timerHours?.writer || 0;
+    const reviewerHours = payout?.reviewerHours || timerHours?.reviewer || 0;
     const tasksWritten = toUnits(written.size);
     const reviewerUnits = toUnits(reviewerRaw);
     contributors.push({

@@ -43,6 +43,7 @@ const pct = (v: number | null): string =>
 function Trend({ kpi }: { kpi: KpiValue }) {
   if (kpi.last7 === null || kpi.prev7 === null || kpi.prev7 === 0) return null;
   const delta = (kpi.last7 - kpi.prev7) / kpi.prev7;
+  if (Math.abs(delta) > 5) return null;
   const up = delta >= 0;
   return (
     <span
