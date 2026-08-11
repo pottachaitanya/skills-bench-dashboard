@@ -31,6 +31,9 @@ Without Snowflake credentials, set `USE_SNAPSHOT=1` to serve the bundled
 | `SNOWFLAKE_ROLE` | no | Role with read on `PROJECT_ANALYTICS.CENTRALIZED` and `ANALYTICS_DATABASE.AURORA_MERCOR_PRODUCTION.TIMELOG` |
 | `SNOWFLAKE_WAREHOUSE` | no | e.g. `ADHOC_WH` |
 | `USE_SNAPSHOT` | no | `1` = serve bundled snapshot instead of live queries |
+| `STUDIO_API_KEY` | no | RLS Studio API key — enables **hybrid mode**: current task statuses (totals / approved / awaiting review per domain) are fetched live from the Studio REST API even without Snowflake. Units, one-shot, and AHT still come from Snowflake or the snapshot. |
+| `STUDIO_BASE_URL` | no | Default `https://api.studio.mercor.com` |
+| `STUDIO_COMPANY_ID` | no | Company scope header for the Studio API |
 
 \* If Snowflake variables are missing the app automatically falls back to the
 snapshot.

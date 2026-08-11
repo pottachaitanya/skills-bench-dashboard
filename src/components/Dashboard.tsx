@@ -62,7 +62,11 @@ export default function Dashboard() {
               <>
                 {" "}
                 · Data refreshed: {state.data.fetchedAt}
-                {state.data.source === "snapshot" ? " (snapshot)" : ""}
+                {state.data.source === "snapshot"
+                  ? state.data.liveStatuses
+                    ? " (statuses live via Studio; units/AHT from snapshot)"
+                    : " (snapshot)"
+                  : ""}
               </>
             ) : null}
           </p>

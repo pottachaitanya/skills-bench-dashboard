@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { getSnowflakeConfig, runQueries } from "./snowflake";
 import { EVENTS_SQL, STATUSES_SQL, TIMERS_SQL } from "./queries";
+import { fetchStudioStatuses } from "./studio";
 import type { RawData, Role, TaskEvent, TaskStatusRow, TimerRow } from "./types";
 
 function asString(value: unknown): string | null {
@@ -89,6 +90,7 @@ async function fetchFromSnowflake(): Promise<RawData | null> {
     timers: parseRows(timers, parseTimer),
     fetchedAt: new Date().toISOString(),
     source: "snowflake",
+    liveStatuses: false,
   };
 }
 
@@ -106,6 +108,7 @@ async function loadSnapshot(): Promise<RawData> {
     timers: parseRows(obj.timers, parseTimer),
     fetchedAt: asString(obj.fetchedAt) ?? "unknown",
     source: "snapshot",
+    liveStatuses: false,
   };
 }
 
@@ -130,6 +133,23 @@ export async function loadRawData(): Promise<RawData> {
   }
   if (!data) {
     data = await loadSnapshot();
+  }
+  // Hybrid mode: overlay live task statuses from the Studio API when a key
+  // is configured (units/timers still come from the base source).
+  if (data.source === "snapshot") {
+    try {
+      const liveStatuses = await fetchStudioStatuses();
+      if (liveStatuses) {
+        data = {
+          ...data,
+          statuses: liveStatuses,
+          liveStatuses: true,
+          fetchedAt: new Date().toISOString(),
+        };
+      }
+    } catch (error) {
+      console.error("Studio live status fetch failed; using base statuses", error);
+    }
   }
   cache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
   return data;

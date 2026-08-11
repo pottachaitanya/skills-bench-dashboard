@@ -453,6 +453,7 @@ export function computeDashboard(
     projectId: PROJECT_ID,
     fetchedAt: raw.fetchedAt,
     source: raw.source,
+    liveStatuses: raw.liveStatuses,
     dateRange: { start: dateRange.start, end: dateRange.end },
     overall,
     domains,

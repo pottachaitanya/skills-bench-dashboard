@@ -36,6 +36,8 @@ export interface RawData {
   timers: TimerRow[];
   fetchedAt: string;
   source: "snowflake" | "snapshot";
+  /** True when current task statuses were fetched live from the Studio API. */
+  liveStatuses: boolean;
 }
 
 /** A task count kept raw and displayed (/2) side by side for auditability. */
@@ -138,6 +140,7 @@ export interface DashboardData {
   projectId: string;
   fetchedAt: string;
   source: "snowflake" | "snapshot";
+  liveStatuses: boolean;
   dateRange: { start: string | null; end: string | null };
   overall: OverallMetrics;
   domains: DomainMetrics[];
