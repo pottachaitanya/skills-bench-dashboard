@@ -546,8 +546,8 @@ export function DomainScorecard({ rows, drills }: { rows: DomainRow[]; drills: D
         </table>
       </div>
       <p className="note px-3 py-2">
-        Overall row recomputed from summed numerators and denominators — never averaged across domains. Domain hours are allocated by joining
-        each person&apos;s recorded hours to their Studio activity per day. Click a domain row for the window drill-down.
+        Overall row recomputed from summed numerators and denominators — never averaged across domains. Each expert works one domain, so all of a
+        person&apos;s recorded hours are assigned to their primary domain (where their Studio work happened). Click a domain row for the window drill-down.
       </p>
       <div className="grid grid-cols-1 gap-6 border-t px-4 py-4 md:grid-cols-3" style={{ borderColor: "var(--rule)" }}>
         <SmallMultiple title="Approved (weighted)" rows={rows} value={(r) => r.approved} fmt={(n) => fmtNum(n, 1)} />

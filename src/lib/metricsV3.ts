@@ -570,9 +570,8 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
   const domainNames = new Set(Object.values(WORLD_DOMAINS));
   const domainOf = (world: string): string => WORLD_DOMAINS[world] ?? (domainNames.has(world) ? world : "Unassigned");
 
-  // Per-day, per-domain hour allocation: distribute each user-day's hours across
-  // domains proportional to that user's Studio events that day; fall back to the
-  // user's whole-range distribution; else "Unassigned".
+  // One expert works one domain: each timer user's hours all go to their
+  // primary domain (most Studio events across the range); else "Unassigned".
   const nameToUid = new Map<string, string | null>();
   const uidFor = (name: string | null): string | null => {
     if (!name) return null;
@@ -580,9 +579,7 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
     return nameToUid.get(name) ?? null;
   };
   type DomainCount = Map<string, number>;
-  const writerEvByUserDay = new Map<string, Map<string, DomainCount>>();
   const writerEvByUser = new Map<string, DomainCount>();
-  const reviewEvByUserDay = new Map<string, Map<string, DomainCount>>();
   const reviewEvByUser = new Map<string, DomainCount>();
   const bump = (m: DomainCount, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
   for (const t of snap.tasks) {
@@ -590,15 +587,9 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
     for (let i = 1; i < t.versions.length; i++) {
       const prev = t.versions[i - 1];
       const v = t.versions[i];
-      const d = laDay(v.at);
       if (bucketOf(v.status) === "submitted" && bucketOf(prev.status) !== "submitted") {
         const uid = uidFor(v.writerName);
         if (uid) {
-          let byDay = writerEvByUserDay.get(uid);
-          if (!byDay) writerEvByUserDay.set(uid, (byDay = new Map()));
-          let dc = byDay.get(d);
-          if (!dc) byDay.set(d, (dc = new Map()));
-          bump(dc, dom);
           let all = writerEvByUser.get(uid);
           if (!all) writerEvByUser.set(uid, (all = new Map()));
           bump(all, dom);
@@ -607,11 +598,6 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
       if (v.status === REVIEW && prev.status !== REVIEW) {
         const uid = uidFor(v.actorName);
         if (uid) {
-          let byDay = reviewEvByUserDay.get(uid);
-          if (!byDay) reviewEvByUserDay.set(uid, (byDay = new Map()));
-          let dc = byDay.get(d);
-          if (!dc) byDay.set(d, (dc = new Map()));
-          bump(dc, dom);
           let all = reviewEvByUser.get(uid);
           if (!all) reviewEvByUser.set(uid, (all = new Map()));
           bump(all, dom);
@@ -619,6 +605,29 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
       }
     }
   }
+
+  // Each expert works a single domain: assign all of a user's hours to their
+  // primary domain — the one with the most Studio events (writer + review)
+  // across the whole range. Unmatched users stay "Unassigned".
+  const primaryDomainCache = new Map<string, string>();
+  const primaryDomainOf = (userId: string): string => {
+    const cached = primaryDomainCache.get(userId);
+    if (cached) return cached;
+    const combined: DomainCount = new Map();
+    for (const src of [writerEvByUser.get(userId), reviewEvByUser.get(userId)]) {
+      if (src) for (const [dom, n] of src) combined.set(dom, (combined.get(dom) ?? 0) + n);
+    }
+    let best = "Unassigned";
+    let bestN = 0;
+    for (const [dom, n] of combined) {
+      if (n > bestN || (n === bestN && dom < best)) {
+        best = dom;
+        bestN = n;
+      }
+    }
+    primaryDomainCache.set(userId, best);
+    return best;
+  };
 
   // Unfiltered day-level hour maps (needed for Today and window sums).
   const writerHoursByDayAll = new Map<string, number>();
@@ -634,17 +643,8 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
   for (const r of snap.timelog) {
     const dayMap = r.role === "writer" ? writerHoursByDayAll : reviewerHoursByDayAll;
     dayMap.set(r.date, (dayMap.get(r.date) ?? 0) + r.hours);
-    const evByUserDay = r.role === "writer" ? writerEvByUserDay : reviewEvByUserDay;
-    const evByUser = r.role === "writer" ? writerEvByUser : reviewEvByUser;
     const domMap = r.role === "writer" ? writerHoursByDomainDay : reviewerHoursByDomainDay;
-    const dist = evByUserDay.get(r.userId)?.get(r.date) ?? evByUserDay.get(r.userId)?.get(addDays(r.date, -1)) ?? evByUser.get(r.userId);
-    if (dist && dist.size > 0) {
-      let total = 0;
-      for (const n of dist.values()) total += n;
-      for (const [dom, n] of dist) addDomainDay(domMap, dom, r.date, (r.hours * n) / total);
-    } else {
-      addDomainDay(domMap, "Unassigned", r.date, r.hours);
-    }
+    addDomainDay(domMap, primaryDomainOf(r.userId), r.date, r.hours);
   }
 
   const sumDayMap = (m: Map<string, number> | undefined, from: string, to: string): number => {
