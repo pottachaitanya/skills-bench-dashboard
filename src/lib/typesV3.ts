@@ -110,6 +110,73 @@ export interface ReviewerRow {
   units: number;
   reviewedTasks: number;
   hours: number | null;
+  hoursPerPass: number | null;
+  hoursPerReviewedTask: number | null;
+  passesPerTask: number | null;
+}
+
+// Windows for the Performance Summary table (§3 Section 1):
+// today is a partial day and never feeds averages.
+export interface WindowValues {
+  today: number | null;
+  t1: number | null;
+  avg3: number | null;
+  avg7: number | null;
+  total: number | null;
+}
+
+export interface PerfSummary {
+  totalHours: WindowValues;
+  writerHours: WindowValues;
+  reviewerHours: WindowValues;
+  tasksWritten: WindowValues;
+  tasksReviewed: WindowValues;
+  tasksApproved: WindowValues;
+  // Efficiency rows: window ratios (summed numerator ÷ summed denominator), never avg/day
+  hoursPerApproved: WindowValues;
+  writerHoursPerTask: WindowValues;
+  reviewHoursPerTask: WindowValues;
+}
+
+export interface PipelineDomainRow {
+  domain: string;
+  pending: number;
+  awaitingReview: number;
+  inReview: number;
+  qa: number;
+  openWork: number;
+  approved: number;
+  pctOfOpenWork: number | null;
+}
+
+export interface DomainRow {
+  domain: string;
+  approved: number;
+  written: number;
+  reviewed: number;
+  writerHours: number;
+  reviewerHours: number;
+  totalHours: number;
+  writerAht: number | null;
+  reviewerAht: number | null;
+  overallAht: number | null;
+  oneShot: number | null;
+  pctOfApproved: number | null;
+  pctOfHours: number | null;
+}
+
+export interface DomainDrill {
+  domain: string;
+  approved: WindowValues;
+  written: WindowValues;
+  reviewed: WindowValues;
+  writerHours: WindowValues;
+  reviewerHours: WindowValues;
+  totalHours: WindowValues;
+  writerAht: WindowValues;
+  reviewerAht: WindowValues;
+  overallAht: WindowValues;
+  oneShot: WindowValues;
 }
 
 export interface RosterRow {
@@ -151,6 +218,10 @@ export interface DashboardV3Data {
     nonApprovedTerminal: number;
   };
   quality: QualityWindows;
+  perfSummary: PerfSummary;
+  pipelineDomains: PipelineDomainRow[];
+  domains: DomainRow[];
+  domainDrills: DomainDrill[];
   writers: WriterRow[];
   reviewers: ReviewerRow[];
   spendKpis: {

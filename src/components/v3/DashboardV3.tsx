@@ -3,15 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DashboardV3Data, TriValue } from "@/lib/typesV3";
 import { HoursChart, PipelineChart, SpendChart, ThroughputChart, UnitsChart } from "./ChartsV3";
-import { ReviewerTable, RosterTable, WriterTable } from "./TablesV3";
+import { DomainScorecard, PerfSummaryTable, PipelineDomainTable, ReviewerTable, RosterTable, WriterTable } from "./TablesV3";
 import { fmtDayLong, fmtHours, fmtMoney, fmtNum, fmtPct } from "./formatV3";
 
 const SECTIONS = [
   { id: "overview", label: "Overview" },
-  { id: "throughput", label: "Throughput" },
-  { id: "contributors", label: "Contributors" },
+  { id: "pipeline", label: "Pipeline" },
+  { id: "experts", label: "Experts" },
   { id: "quality", label: "Quality" },
-  { id: "spend", label: "Spend & Roster" },
+  { id: "cost", label: "Cost" },
+  { id: "domains", label: "Domains" },
 ];
 
 type Preset = "7d" | "30d" | "mtd" | "all" | "custom";
@@ -51,10 +52,10 @@ function KpiCard({ title, tip, value, fmt }: { title: string; tip: string; value
       <div className="mt-2 text-3xl font-bold text-slate-800">{fmt(value.total)}</div>
       <div className="mt-2 flex gap-4 text-xs text-slate-500">
         <span>
-          T-1: <span className="font-semibold text-slate-700">{fmt(value.t1)}</span>
+          Yesterday: <span className="font-semibold text-slate-700">{fmt(value.t1)}</span>
         </span>
         <span>
-          7d avg: <span className="font-semibold text-slate-700">{fmt(value.avg7)}</span>
+          7-day average: <span className="font-semibold text-slate-700">{fmt(value.avg7)}</span>
         </span>
       </div>
       <div className="mt-1 text-[10px] text-slate-400">Total (selected range)</div>
@@ -257,7 +258,7 @@ export default function DashboardV3() {
               title="Re-pull data and re-render every section"
               className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 font-medium text-white hover:bg-blue-500 disabled:opacity-60"
             >
-              <span className={loading ? "animate-spin" : ""}>⟳</span> Refresh
+              <span className={loading ? "animate-spin" : ""}>⟳</span> Refresh data
             </button>
           </div>
         </div>
@@ -271,44 +272,50 @@ export default function DashboardV3() {
           <h2 className="text-lg font-bold">Overview</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <KpiCard
-              title="Total Hours Recorded"
+              title="Hours Logged"
               tip="Writer + reviewer hours recorded in the Skillsbench - Task and Task Review-SkillsBench timers (Mercor MCP), within the selected range."
               value={data.kpis.hours}
               fmt={(n) => (n === null ? "—" : `${fmtHours(n)} h`)}
             />
             <KpiCard
-              title="AHT per Approved Task"
-              tip="Writer hours ÷ Tasks Approved (weighted ×0.5). Per weighted (with-skill/without-skill pair) task — roughly double the raw per-row figure by design."
+              title="Total Hours per Approved Task"
+              tip="Writer + reviewer hours ÷ Tasks Approved (weighted ×0.5). Per weighted (with-skill/without-skill pair) task — roughly double the raw per-row figure by design. Writer and reviewer hours-per-task use different denominators, so they are not meant to sum to this figure."
               value={data.kpis.ahtApproved}
               fmt={(n) => (n === null ? "—" : `${n.toFixed(2)} h`)}
             />
             <KpiCard
-              title="One-shot Rate"
-              tip="Approved tasks with zero backward transitions across their entire lifecycle ÷ all approved tasks. The 0.5 weighting cancels out."
+              title="Clean Pass Rate"
+              tip="Approved tasks with zero backward transitions across their entire lifecycle ÷ all approved tasks (one-shot rate). The 0.5 weighting cancels out."
               value={data.kpis.oneShotRate}
               fmt={(n) => fmtPct(n)}
             />
           </div>
-          <Card title="Throughput — Tasks Submitted & Approved" tip="Daily value plus trailing 7-day average; complete LA days only, ending T-1. Counts weighted ×0.5.">
+          <Card
+            title="Performance Summary"
+            tip="Today is a partial day and never feeds an average or rolling series. Hours and throughput rows are per-day rates; efficiency rows are window ratios (summed hours ÷ summed tasks)."
+          >
+            <PerfSummaryTable perf={data.perfSummary} />
+          </Card>
+          <Card title="Throughput — Tasks Written & Approved" tip="Daily value plus trailing 7-day average; complete LA days only, ending yesterday. Counts weighted ×0.5.">
             <ThroughputChart data={data.daily} />
           </Card>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <Card title="Writer & Review Units" tip="Writer Units = transitions into Awaiting Review (resubmissions count again). Review Units = transitions into In Review. Weighted ×0.5.">
+            <Card title="Submissions & Review Passes" tip="Submissions = transitions into Awaiting Review (resubmissions count again). Review Passes = transitions into In Review. Weighted ×0.5.">
               <UnitsChart data={data.daily} />
             </Card>
-            <Card title="Hours Recorded" tip="Actual recorded hours (not weighted).">
+            <Card title="Hours Logged" tip="Actual recorded hours (not weighted).">
               <HoursChart data={data.daily} />
             </Card>
           </div>
         </section>
 
-        {/* Section 2 — Throughput / pipeline */}
-        <section id="throughput" className="scroll-mt-28 space-y-4">
-          <h2 className="text-lg font-bold">Throughput</h2>
+        {/* Section 2 — Pipeline */}
+        <section id="pipeline" className="scroll-mt-28 space-y-4">
+          <h2 className="text-lg font-bold">Pipeline</h2>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <div className="xl:col-span-2">
               <Card
-                title={`Task Stage Snapshot — as of ${fmtDayLong(data.pipeline.asOf)}`}
+                title={`Stage Snapshot — as of ${fmtDayLong(data.pipeline.asOf)}`}
                 tip="Each task's stage at the end of the selected range (latest transition on or before that date), weighted ×0.5. Not a time series."
               >
                 <PipelineChart stages={data.pipeline.stages} />
@@ -318,13 +325,13 @@ export default function DashboardV3() {
               <Card title="Range Totals" tip="All counts weighted ×0.5. Total (selected range).">
                 <dl className="space-y-2 px-1 text-sm">
                   {[
-                    ["Tasks Submitted", fmtNum(data.writerTotals.submitted), "Unique tasks with ≥1 transition into Awaiting Review"],
-                    ["Writer Units", fmtNum(data.writerTotals.writerUnits), "Transitions into Awaiting Review, resubmissions count again"],
-                    ["Reviewed Tasks", fmtNum(data.writerTotals.reviewedTasks), "Unique tasks with ≥1 transition into In Review"],
-                    ["Review Units", fmtNum(data.writerTotals.reviewUnits), "Transitions into In Review"],
+                    ["Tasks Written", fmtNum(data.writerTotals.submitted), "Unique tasks with ≥1 transition into Awaiting Review"],
+                    ["Submissions", fmtNum(data.writerTotals.writerUnits), "Transitions into Awaiting Review, resubmissions count again"],
+                    ["Tasks Reviewed", fmtNum(data.writerTotals.reviewedTasks), "Unique tasks with ≥1 transition into In Review"],
+                    ["Review Passes", fmtNum(data.writerTotals.reviewUnits), "Transitions into In Review"],
                     ["Tasks Approved", fmtNum(data.writerTotals.approved), "Unique tasks whose latest version is Approved"],
-                    ["Pass %", fmtPct(data.writerTotals.passRate), "Tasks Approved ÷ Reviewed Tasks"],
-                    ["Send Back Rate", fmtPct(data.writerTotals.sendBackRate), "Tasks sent back from review ÷ Reviewed Tasks. Pass % + Send Back Rate can exceed 100% — a task can be sent back once and approved later."],
+                    ["Approval Rate", fmtPct(data.writerTotals.passRate), "Tasks Approved ÷ Tasks Reviewed"],
+                    ["Send-back Rate", fmtPct(data.writerTotals.sendBackRate), "Tasks sent back from review ÷ Tasks Reviewed. Approval Rate + Send-back Rate can exceed 100% — a task can be sent back once and approved later."],
                   ].map(([label, value, tip]) => (
                     <div key={label} className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                       <dt className="text-slate-500">
@@ -338,12 +345,18 @@ export default function DashboardV3() {
               </Card>
             </div>
           </div>
+          <Card
+            title={`Pipeline by Domain — as of ${fmtDayLong(data.pipeline.asOf)}`}
+            tip="Rows sorted by Open Work descending — the domain with the most work in flight is on top. Counts weighted ×0.5."
+          >
+            <PipelineDomainTable rows={data.pipelineDomains} />
+          </Card>
         </section>
 
-        {/* Section 3 — Contributors */}
-        <section id="contributors" className="scroll-mt-28 space-y-4">
+        {/* Section 3 — Experts */}
+        <section id="experts" className="scroll-mt-28 space-y-4">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-bold">Contributors</h2>
+            <h2 className="text-lg font-bold">Experts</h2>
             <div className="flex rounded-full bg-slate-200 p-0.5 text-sm">
               {(["writer", "reviewer"] as const).map((t) => (
                 <button
@@ -376,9 +389,9 @@ export default function DashboardV3() {
             <div className="flex rounded-full bg-slate-200 p-0.5 text-xs">
               {(
                 [
-                  ["d3", "3d"],
-                  ["d7", "7d"],
-                  ["total", "Total"],
+                  ["d3", "3 days"],
+                  ["d7", "7 days"],
+                  ["total", "All time"],
                 ] as const
               ).map(([k, label]) => (
                 <button
@@ -394,15 +407,15 @@ export default function DashboardV3() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                One-shot Rate
-                <Tip text="Approved tasks whose path had zero backward transitions across the entire lifecycle ÷ all approved tasks in the window." />
+                Clean Pass Rate
+                <Tip text="Approved tasks whose path had zero backward transitions across the entire lifecycle ÷ all approved tasks in the window (one-shot rate)." />
               </div>
               <div className="mt-2 text-3xl font-bold text-emerald-600">{fmtPct(q.oneShot)}</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Rework Rate
-                <Tip text="Derived complement: 1 − One-shot Rate (same denominator) — the two can never disagree." />
+                <Tip text="Derived complement: 1 − Clean Pass Rate (same denominator) — the two can never disagree." />
               </div>
               <div className="mt-2 text-3xl font-bold text-rose-500">{fmtPct(rework)}</div>
             </div>
@@ -426,20 +439,20 @@ export default function DashboardV3() {
           ) : null}
         </section>
 
-        {/* Section 5 — Spend & Roster */}
-        <section id="spend" className="scroll-mt-28 space-y-4">
-          <h2 className="text-lg font-bold">Spend & Roster</h2>
+        {/* Section 5 — Cost & Roster */}
+        <section id="cost" className="scroll-mt-28 space-y-4">
+          <h2 className="text-lg font-bold">Cost & Roster</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Payable
+                Payable to Experts
                 <Tip text="Actual payable amounts from Mercor MCP for the two SkillsBench timers, within the selected range. Bonus and non-SkillsBench-timer payouts are excluded and reported separately below." />
               </div>
               <div className="mt-2 text-3xl font-bold text-slate-800">{fmtMoney(data.spendKpis.payable)}</div>
               <div className="mt-1 text-[10px] text-slate-400">Total (selected range)</div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payable (7d)</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payable (7 days)</div>
               <div className="mt-2 text-3xl font-bold text-slate-800">{fmtMoney(data.spendKpis.payable7d)}</div>
               <div className="mt-1 text-[10px] text-slate-400">last 7 complete days</div>
             </div>
@@ -455,6 +468,14 @@ export default function DashboardV3() {
             {fmtMoney(data.meta.otherPayable)} of additional project payouts fall outside the two SkillsBench timers (bonuses, pilot and precursor
             timers) and are excluded from the Payable figures above.
           </p>
+        </section>
+
+        {/* Section 6 — Domain Scorecard */}
+        <section id="domains" className="scroll-mt-28 space-y-4">
+          <h2 className="text-lg font-bold">Domain Scorecard</h2>
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <DomainScorecard rows={data.domains} drills={data.domainDrills} />
+          </div>
         </section>
       </main>
     </div>

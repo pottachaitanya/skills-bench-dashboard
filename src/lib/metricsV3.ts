@@ -1,14 +1,20 @@
 import type {
   DailyPoint,
   DashboardV3Data,
+  DomainDrill,
+  DomainRow,
+  PerfSummary,
+  PipelineDomainRow,
   QualityWindows,
   ReviewerRow,
   RosterRow,
   SnapshotV3,
   StageCount,
   TriValue,
+  WindowValues,
   WriterRow,
 } from "./typesV3";
+import { WORLD_DOMAINS } from "./config";
 
 export const TIMEZONE = "America/Los_Angeles";
 export const WRITER_TIMER = "Skillsbench - Task";
@@ -409,10 +415,11 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
   const hoursTotal = sumWindow(hoursByDay, start, end);
   const hoursKpi: TriValue = { t1: round(hoursT1), avg7: round(hours7 / 7), total: round(hoursTotal) };
 
+  // All-in (writer + reviewer) hours in a window — the Overall AHT numerator.
   const writerHoursWindow = (from: string, to: string): number => {
     let s = 0;
     for (const r of snap.timelog) {
-      if (r.role === "writer" && r.date >= from && r.date <= to) s += r.hours;
+      if (r.date >= from && r.date <= to) s += r.hours;
     }
     return s;
   };
@@ -541,16 +548,284 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
     .map(([name, a]) => {
       const uid = resolveActor(name);
       const rh = uid !== null ? (reviewerHoursByUser.get(uid) ?? 0) : null;
+      const unitsW = a.unitEvents * WEIGHT;
+      const reviewedW = a.reviewed.size * WEIGHT;
       return {
         name: name.replace(/^\[EXP\]\s*/i, ""),
         unitsT1: round(a.unitEventsT1 * WEIGHT, 1),
         units7d: round((a.unitEvents7 * WEIGHT) / 7, 2),
-        units: round(a.unitEvents * WEIGHT, 1),
-        reviewedTasks: round(a.reviewed.size * WEIGHT, 1),
+        units: round(unitsW, 1),
+        reviewedTasks: round(reviewedW, 1),
         hours: rh !== null ? round(rh, 2) : null,
+        hoursPerPass: rh !== null && unitsW > 0 ? round(rh / unitsW, 2) : null,
+        hoursPerReviewedTask: rh !== null && reviewedW > 0 ? round(rh / reviewedW, 2) : null,
+        passesPerTask: reviewedW > 0 ? round(unitsW / reviewedW, 2) : null,
       };
     })
     .sort((a, b) => b.units - a.units);
+
+  // ---- Performance Summary windows (Today partial / Yesterday / 3d / 7d / Total) ----
+  const today = todayLA(now);
+  // Snapshot tasks carry the domain name directly; accept raw world IDs too.
+  const domainNames = new Set(Object.values(WORLD_DOMAINS));
+  const domainOf = (world: string): string => WORLD_DOMAINS[world] ?? (domainNames.has(world) ? world : "Unassigned");
+
+  // Per-day, per-domain hour allocation: distribute each user-day's hours across
+  // domains proportional to that user's Studio events that day; fall back to the
+  // user's whole-range distribution; else "Unassigned".
+  const nameToUid = new Map<string, string | null>();
+  const uidFor = (name: string | null): string | null => {
+    if (!name) return null;
+    if (!nameToUid.has(name)) nameToUid.set(name, resolveActor(name));
+    return nameToUid.get(name) ?? null;
+  };
+  type DomainCount = Map<string, number>;
+  const writerEvByUserDay = new Map<string, Map<string, DomainCount>>();
+  const writerEvByUser = new Map<string, DomainCount>();
+  const reviewEvByUserDay = new Map<string, Map<string, DomainCount>>();
+  const reviewEvByUser = new Map<string, DomainCount>();
+  const bump = (m: DomainCount, k: string) => m.set(k, (m.get(k) ?? 0) + 1);
+  for (const t of snap.tasks) {
+    const dom = domainOf(t.world);
+    for (let i = 1; i < t.versions.length; i++) {
+      const prev = t.versions[i - 1];
+      const v = t.versions[i];
+      const d = laDay(v.at);
+      if (bucketOf(v.status) === "submitted" && bucketOf(prev.status) !== "submitted") {
+        const uid = uidFor(v.writerName);
+        if (uid) {
+          let byDay = writerEvByUserDay.get(uid);
+          if (!byDay) writerEvByUserDay.set(uid, (byDay = new Map()));
+          let dc = byDay.get(d);
+          if (!dc) byDay.set(d, (dc = new Map()));
+          bump(dc, dom);
+          let all = writerEvByUser.get(uid);
+          if (!all) writerEvByUser.set(uid, (all = new Map()));
+          bump(all, dom);
+        }
+      }
+      if (v.status === REVIEW && prev.status !== REVIEW) {
+        const uid = uidFor(v.actorName);
+        if (uid) {
+          let byDay = reviewEvByUserDay.get(uid);
+          if (!byDay) reviewEvByUserDay.set(uid, (byDay = new Map()));
+          let dc = byDay.get(d);
+          if (!dc) byDay.set(d, (dc = new Map()));
+          bump(dc, dom);
+          let all = reviewEvByUser.get(uid);
+          if (!all) reviewEvByUser.set(uid, (all = new Map()));
+          bump(all, dom);
+        }
+      }
+    }
+  }
+
+  // Unfiltered day-level hour maps (needed for Today and window sums).
+  const writerHoursByDayAll = new Map<string, number>();
+  const reviewerHoursByDayAll = new Map<string, number>();
+  // domain -> day -> hours
+  const writerHoursByDomainDay = new Map<string, Map<string, number>>();
+  const reviewerHoursByDomainDay = new Map<string, Map<string, number>>();
+  const addDomainDay = (m: Map<string, Map<string, number>>, dom: string, day: string, h: number) => {
+    let dd = m.get(dom);
+    if (!dd) m.set(dom, (dd = new Map()));
+    dd.set(day, (dd.get(day) ?? 0) + h);
+  };
+  for (const r of snap.timelog) {
+    const dayMap = r.role === "writer" ? writerHoursByDayAll : reviewerHoursByDayAll;
+    dayMap.set(r.date, (dayMap.get(r.date) ?? 0) + r.hours);
+    const evByUserDay = r.role === "writer" ? writerEvByUserDay : reviewEvByUserDay;
+    const evByUser = r.role === "writer" ? writerEvByUser : reviewEvByUser;
+    const domMap = r.role === "writer" ? writerHoursByDomainDay : reviewerHoursByDomainDay;
+    const dist = evByUserDay.get(r.userId)?.get(r.date) ?? evByUserDay.get(r.userId)?.get(addDays(r.date, -1)) ?? evByUser.get(r.userId);
+    if (dist && dist.size > 0) {
+      let total = 0;
+      for (const n of dist.values()) total += n;
+      for (const [dom, n] of dist) addDomainDay(domMap, dom, r.date, (r.hours * n) / total);
+    } else {
+      addDomainDay(domMap, "Unassigned", r.date, r.hours);
+    }
+  }
+
+  const sumDayMap = (m: Map<string, number> | undefined, from: string, to: string): number => {
+    if (!m) return 0;
+    let s = 0;
+    for (const [d, v] of m) if (d >= from && d <= to) s += v;
+    return s;
+  };
+  // Windows: today (partial) / t1 / 3d avg / 7d avg / total-of-range
+  const windowsOf = (valueIn: (from: string, to: string) => number, opts?: { avg?: boolean }): WindowValues => {
+    const avg = opts?.avg ?? true;
+    return {
+      today: round(valueIn(today, today)),
+      t1: round(valueIn(end, end)),
+      avg3: round(avg ? valueIn(addDays(end, -2), end) / 3 : valueIn(addDays(end, -2), end)),
+      avg7: round(avg ? valueIn(addDays(end, -6), end) / 7 : valueIn(addDays(end, -6), end)),
+      total: round(valueIn(start, end)),
+    };
+  };
+  const ratioWindows = (num: (from: string, to: string) => number, den: (from: string, to: string) => number): WindowValues => {
+    const r = (from: string, to: string): number | null => {
+      const d = den(from, to);
+      return d > 0 ? round(num(from, to) / d, 2) : null;
+    };
+    return { today: r(today, today), t1: r(end, end), avg3: r(addDays(end, -2), end), avg7: r(addDays(end, -6), end), total: r(start, end) };
+  };
+
+  // Unique-task window counts (weighted). A task counts once per window it has an event in.
+  const uniqueInWindow = (getDays: (f: TaskFacts) => string[], from: string, to: string, domain?: string): number => {
+    let n = 0;
+    for (const f of facts.values()) {
+      if (domain !== undefined && domainOf(f.world) !== domain) continue;
+      if (getDays(f).some((d) => d >= from && d <= to)) n += 1;
+    }
+    return n * WEIGHT;
+  };
+  // Approved: unique tasks whose latest state is Approved, attributed to final approval day.
+  const approvedWindow = (from: string, to: string, domain?: string): number => {
+    let n = 0;
+    for (const taskId of approvedTaskIds) {
+      const f = facts.get(taskId);
+      if (!f || f.finalApproveDay === null) continue;
+      if (domain !== undefined && domainOf(f.world) !== domain) continue;
+      if (f.finalApproveDay >= from && f.finalApproveDay <= to) n += 1;
+    }
+    return n * WEIGHT;
+  };
+  // Today's approvals are still in flight: use approve events for the partial-day cell.
+  const approveEventsWindow = (from: string, to: string, domain?: string): number => {
+    let n = 0;
+    for (const f of facts.values()) {
+      if (domain !== undefined && domainOf(f.world) !== domain) continue;
+      n += f.approveDays.filter((d) => d >= from && d <= to).length;
+    }
+    return n * WEIGHT;
+  };
+  const approvedOrEvents = (from: string, to: string, domain?: string): number =>
+    to >= today ? approveEventsWindow(from, to, domain) : approvedWindow(from, to, domain);
+
+  const wHours = (from: string, to: string) => sumDayMap(writerHoursByDayAll, from, to);
+  const rHours = (from: string, to: string) => sumDayMap(reviewerHoursByDayAll, from, to);
+  const tHours = (from: string, to: string) => wHours(from, to) + rHours(from, to);
+  const writtenWin = (from: string, to: string) => uniqueInWindow((f) => f.submitDays, from, to);
+  const reviewedWin = (from: string, to: string) => uniqueInWindow((f) => f.reviewDays, from, to);
+
+  const perfSummary: PerfSummary = {
+    totalHours: windowsOf(tHours),
+    writerHours: windowsOf(wHours),
+    reviewerHours: windowsOf(rHours),
+    tasksWritten: windowsOf(writtenWin),
+    tasksReviewed: windowsOf(reviewedWin),
+    tasksApproved: windowsOf((f, t) => approvedOrEvents(f, t)),
+    hoursPerApproved: ratioWindows(tHours, (f, t) => approvedOrEvents(f, t)),
+    writerHoursPerTask: ratioWindows(wHours, writtenWin),
+    reviewHoursPerTask: ratioWindows(rHours, reviewedWin),
+  };
+
+  // ---- Pipeline by domain (as of `end`) ----
+  const pipeDomAgg = new Map<string, { pending: number; awaitingReview: number; inReview: number; qa: number; approved: number }>();
+  for (const f of facts.values()) {
+    if (!f.statusAsOfEnd) continue;
+    const dom = domainOf(f.world);
+    let a = pipeDomAgg.get(dom);
+    if (!a) pipeDomAgg.set(dom, (a = { pending: 0, awaitingReview: 0, inReview: 0, qa: 0, approved: 0 }));
+    const b = bucketOf(f.statusAsOfEnd);
+    if (b === "pre") a.pending += 1;
+    else if (b === "submitted") a.awaitingReview += 1;
+    else if (b === "review") a.inReview += 1;
+    else if (b === "qa") a.qa += 1;
+    else if (b === "approved") a.approved += 1;
+  }
+  let openWorkTotal = 0;
+  for (const a of pipeDomAgg.values()) openWorkTotal += a.pending + a.awaitingReview + a.inReview + a.qa;
+  const pipelineDomains: PipelineDomainRow[] = [...pipeDomAgg.entries()]
+    .map(([domain, a]) => {
+      const open = a.pending + a.awaitingReview + a.inReview + a.qa;
+      return {
+        domain,
+        pending: round(a.pending * WEIGHT, 1),
+        awaitingReview: round(a.awaitingReview * WEIGHT, 1),
+        inReview: round(a.inReview * WEIGHT, 1),
+        qa: round(a.qa * WEIGHT, 1),
+        openWork: round(open * WEIGHT, 1),
+        approved: round(a.approved * WEIGHT, 1),
+        pctOfOpenWork: openWorkTotal > 0 ? round(open / openWorkTotal) : null,
+      };
+    })
+    .sort((a, b) => b.openWork - a.openWork);
+
+  // ---- Domain Scorecard (6B): comparison rows + per-domain drill-downs ----
+  const allDomains = new Set<string>();
+  for (const f of facts.values()) allDomains.add(domainOf(f.world));
+  for (const m of [writerHoursByDomainDay, reviewerHoursByDomainDay]) for (const dom of m.keys()) allDomains.add(dom);
+  const totalHoursAll = tHours(start, end);
+  const oneShotDomainWindow = (from: string, to: string, domain?: string): number | null => {
+    let approved = 0;
+    let clean = 0;
+    for (const taskId of approvedTaskIds) {
+      const f = facts.get(taskId);
+      if (!f || f.finalApproveDay === null || f.finalApproveDay < from || f.finalApproveDay > to) continue;
+      if (domain !== undefined && domainOf(f.world) !== domain) continue;
+      approved += 1;
+      if (f.backwardDays.length === 0) clean += 1;
+    }
+    return approved > 0 ? round(clean / approved) : null;
+  };
+  const domains: DomainRow[] = [...allDomains]
+    .map((dom) => {
+      const wh = sumDayMap(writerHoursByDomainDay.get(dom), start, end);
+      const rh = sumDayMap(reviewerHoursByDomainDay.get(dom), start, end);
+      const th = wh + rh;
+      const written = uniqueInWindow((f) => f.submitDays, start, end, dom);
+      const reviewed = uniqueInWindow((f) => f.reviewDays, start, end, dom);
+      const approved = approvedWindow(start, end, dom);
+      return {
+        domain: dom,
+        approved: round(approved, 1),
+        written: round(written, 1),
+        reviewed: round(reviewed, 1),
+        writerHours: round(wh, 1),
+        reviewerHours: round(rh, 1),
+        totalHours: round(th, 1),
+        writerAht: written > 0 ? round(wh / written, 2) : null,
+        reviewerAht: reviewed > 0 ? round(rh / reviewed, 2) : null,
+        overallAht: approved > 0 ? round(th / approved, 2) : null,
+        oneShot: oneShotDomainWindow(start, end, dom),
+        pctOfApproved: tasksApproved > 0 ? round(approved / tasksApproved) : null,
+        pctOfHours: totalHoursAll > 0 ? round(th / totalHoursAll) : null,
+      };
+    })
+    .filter((d) => d.approved > 0 || d.written > 0 || d.reviewed > 0 || d.totalHours > 0)
+    .sort((a, b) => b.approved - a.approved);
+  const domainDrills: DomainDrill[] = domains.map((d) => {
+    const dom = d.domain;
+    const dwh = (f: string, t: string) => sumDayMap(writerHoursByDomainDay.get(dom), f, t);
+    const drh = (f: string, t: string) => sumDayMap(reviewerHoursByDomainDay.get(dom), f, t);
+    const dth = (f: string, t: string) => dwh(f, t) + drh(f, t);
+    const dWritten = (f: string, t: string) => uniqueInWindow((x) => x.submitDays, f, t, dom);
+    const dReviewed = (f: string, t: string) => uniqueInWindow((x) => x.reviewDays, f, t, dom);
+    const dApproved = (f: string, t: string) => approvedOrEvents(f, t, dom);
+    const oneShotWin = (f: string, t: string): number | null => oneShotDomainWindow(f, t, dom);
+    return {
+      domain: dom,
+      approved: windowsOf(dApproved),
+      written: windowsOf(dWritten),
+      reviewed: windowsOf(dReviewed),
+      writerHours: windowsOf(dwh),
+      reviewerHours: windowsOf(drh),
+      totalHours: windowsOf(dth),
+      writerAht: ratioWindows(dwh, dWritten),
+      reviewerAht: ratioWindows(drh, dReviewed),
+      overallAht: ratioWindows(dth, dApproved),
+      oneShot: {
+        today: oneShotWin(today, today),
+        t1: oneShotWin(end, end),
+        avg3: oneShotWin(addDays(end, -2), end),
+        avg7: oneShotWin(addDays(end, -6), end),
+        total: oneShotWin(start, end),
+      },
+    };
+  });
 
   // ---- Spend & roster ----
   const payableTotal = sumWindow(payableByDay, start, end);
@@ -611,6 +886,10 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
       nonApprovedTerminal,
     },
     quality,
+    perfSummary,
+    pipelineDomains,
+    domains,
+    domainDrills,
     writers,
     reviewers,
     spendKpis: {
