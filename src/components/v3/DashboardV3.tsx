@@ -429,7 +429,7 @@ export default function DashboardV3() {
         {/* Section 5 — Spend & Roster */}
         <section id="spend" className="scroll-mt-28 space-y-4">
           <h2 className="text-lg font-bold">Spend & Roster</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Payable
@@ -437,14 +437,6 @@ export default function DashboardV3() {
               </div>
               <div className="mt-2 text-3xl font-bold text-slate-800">{fmtMoney(data.spendKpis.payable)}</div>
               <div className="mt-1 text-[10px] text-slate-400">Total (selected range)</div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Billable
-                <Tip text="Hours × bill rate from Mercor MCP. No bill rates are configured for this project, so this renders as — rather than a misleading $0." />
-              </div>
-              <div className="mt-2 text-3xl font-bold text-slate-800">{fmtMoney(data.spendKpis.billable)}</div>
-              {data.spendKpis.billable === null ? <div className="mt-1 text-[10px] text-slate-400">no bill rates returned for this project</div> : null}
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payable (7d)</div>
