@@ -9,11 +9,10 @@ const PAGE = 20;
 function Th({ children, onClick, active, dir }: { children: React.ReactNode; onClick?: () => void; active?: boolean; dir?: "asc" | "desc" }) {
   return (
     <th
-      className={`sticky top-0 whitespace-nowrap bg-slate-50 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 ${onClick ? "cursor-pointer select-none hover:text-slate-800" : ""}`}
+      aria-sort={onClick ? (active ? (dir === "asc" ? "ascending" : "descending") : "none") : undefined}
       onClick={onClick}
     >
       {children}
-      {active ? <span className="ml-1">{dir === "asc" ? "▲" : "▼"}</span> : null}
     </th>
   );
 }
@@ -22,14 +21,14 @@ function Pager({ page, setPage, total }: { page: number; setPage: (n: number) =>
   const pages = Math.max(1, Math.ceil(total / PAGE));
   if (pages <= 1) return null;
   return (
-    <div className="flex items-center justify-end gap-2 px-3 py-2 text-xs text-slate-500">
-      <button className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40" disabled={page === 0} onClick={() => setPage(page - 1)}>
+    <div className="flex items-center justify-end gap-2 px-3 py-2 text-xs" style={{ color: "var(--ink-3)" }}>
+      <button className="btn disabled:opacity-40" disabled={page === 0} onClick={() => setPage(page - 1)}>
         Prev
       </button>
-      <span>
+      <span className="num">
         {page + 1} / {pages}
       </span>
-      <button className="rounded border border-slate-200 px-2 py-1 disabled:opacity-40" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>
+      <button className="btn disabled:opacity-40" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>
         Next
       </button>
     </div>
@@ -42,7 +41,7 @@ function SearchBox({ value, onChange }: { value: string; onChange: (v: string) =
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder="Search…"
-      className="w-56 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400"
+      className="btn w-56"
     />
   );
 }
@@ -94,15 +93,15 @@ export function WriterTable({ rows }: { rows: WriterRow[] }) {
     }
     return t;
   }, [filtered]);
-  if (rows.length === 0) return <div className="p-6 text-sm text-slate-400">No data available for the selected filters.</div>;
+  if (rows.length === 0) return <div className="card-pad note">No data available for the selected filters.</div>;
   return (
     <div>
       <div className="flex items-center justify-between px-3 py-2">
         <SearchBox value={q} onChange={(v) => { setQ(v); setPage(0); }} />
-        <span className="text-xs text-slate-400">{filtered.length} writers</span>
+        <span className="note">{filtered.length} writers</span>
       </div>
-      <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[980px] text-sm">
+      <div className="table-scroll max-h-[520px] overflow-auto">
+        <table className="data w-full min-w-[980px]">
           <thead>
             <tr>
               <Th onClick={() => toggle("name")} active={key === "name"} dir={dir}>Name</Th>
@@ -119,32 +118,32 @@ export function WriterTable({ rows }: { rows: WriterRow[] }) {
           </thead>
           <tbody>
             {view.map((r) => (
-              <tr key={r.name} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{r.name}</td>
-                <td className="px-3 py-2">{fmtNum(r.unitsT1)}</td>
-                <td className="px-3 py-2">{fmtNum(r.units7d, 2)}</td>
-                <td className="px-3 py-2">{fmtNum(r.units)}</td>
-                <td className="px-3 py-2">{fmtNum(r.submitted)}</td>
-                <td className="px-3 py-2">{fmtNum(r.approved)}</td>
-                <td className="px-3 py-2">{r.hours === null ? "—" : fmtHours(r.hours)}</td>
-                <td className="px-3 py-2">{r.ahtApproved === null ? "—" : `${r.ahtApproved.toFixed(2)} h`}</td>
-                <td className="px-3 py-2">{r.ahtSubmitted === null ? "—" : `${r.ahtSubmitted.toFixed(2)} h`}</td>
-                <td className="px-3 py-2">{fmtPct(r.oneShot)}</td>
+              <tr key={r.name}>
+                <td className="whitespace-nowrap">{r.name}</td>
+                <td className="num">{fmtNum(r.unitsT1)}</td>
+                <td className="num">{fmtNum(r.units7d, 2)}</td>
+                <td className="num">{fmtNum(r.units)}</td>
+                <td className="num">{fmtNum(r.submitted)}</td>
+                <td className="num">{fmtNum(r.approved)}</td>
+                <td className="num">{r.hours === null ? "—" : fmtHours(r.hours)}</td>
+                <td className="num">{r.ahtApproved === null ? "—" : `${r.ahtApproved.toFixed(2)} h`}</td>
+                <td className="num">{r.ahtSubmitted === null ? "—" : `${r.ahtSubmitted.toFixed(2)} h`}</td>
+                <td className="num">{fmtPct(r.oneShot)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-700">
-              <td className="px-3 py-2">Total ({filtered.length})</td>
-              <td className="px-3 py-2">{fmtNum(totals.unitsT1)}</td>
-              <td className="px-3 py-2">—</td>
-              <td className="px-3 py-2">{fmtNum(totals.units)}</td>
-              <td className="px-3 py-2">{fmtNum(totals.submitted)}</td>
-              <td className="px-3 py-2">{fmtNum(totals.approved)}</td>
-              <td className="px-3 py-2">{fmtHours(totals.hours)}</td>
-              <td className="px-3 py-2">{totals.approved > 0 ? `${(totals.hours / totals.approved).toFixed(2)} h` : "—"}</td>
-              <td className="px-3 py-2">{totals.submitted > 0 ? `${(totals.hours / totals.submitted).toFixed(2)} h` : "—"}</td>
-              <td className="px-3 py-2">{totals.oneShotDen > 0 ? fmtPct(totals.oneShotNum / totals.oneShotDen) : "—"}</td>
+            <tr className="row-total">
+              <td>Total ({filtered.length})</td>
+              <td className="num">{fmtNum(totals.unitsT1)}</td>
+              <td className="num">—</td>
+              <td className="num">{fmtNum(totals.units)}</td>
+              <td className="num">{fmtNum(totals.submitted)}</td>
+              <td className="num">{fmtNum(totals.approved)}</td>
+              <td className="num">{fmtHours(totals.hours)}</td>
+              <td className="num">{totals.approved > 0 ? `${(totals.hours / totals.approved).toFixed(2)} h` : "—"}</td>
+              <td className="num">{totals.submitted > 0 ? `${(totals.hours / totals.submitted).toFixed(2)} h` : "—"}</td>
+              <td className="num">{totals.oneShotDen > 0 ? fmtPct(totals.oneShotNum / totals.oneShotDen) : "—"}</td>
             </tr>
           </tfoot>
         </table>
@@ -170,15 +169,15 @@ export function ReviewerTable({ rows }: { rows: ReviewerRow[] }) {
     }
     return t;
   }, [filtered]);
-  if (rows.length === 0) return <div className="p-6 text-sm text-slate-400">No data available for the selected filters.</div>;
+  if (rows.length === 0) return <div className="card-pad note">No data available for the selected filters.</div>;
   return (
     <div>
       <div className="flex items-center justify-between px-3 py-2">
         <SearchBox value={q} onChange={(v) => { setQ(v); setPage(0); }} />
-        <span className="text-xs text-slate-400">{filtered.length} reviewers</span>
+        <span className="note">{filtered.length} reviewers</span>
       </div>
-      <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[980px] text-sm">
+      <div className="table-scroll max-h-[520px] overflow-auto">
+        <table className="data w-full min-w-[980px]">
           <thead>
             <tr>
               <Th onClick={() => toggle("name")} active={key === "name"} dir={dir}>Reviewer</Th>
@@ -194,30 +193,30 @@ export function ReviewerTable({ rows }: { rows: ReviewerRow[] }) {
           </thead>
           <tbody>
             {view.map((r) => (
-              <tr key={r.name} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{r.name}</td>
-                <td className="px-3 py-2">{fmtNum(r.unitsT1)}</td>
-                <td className="px-3 py-2">{fmtNum(r.units7d, 2)}</td>
-                <td className="px-3 py-2">{fmtNum(r.units)}</td>
-                <td className="px-3 py-2">{fmtNum(r.reviewedTasks)}</td>
-                <td className="px-3 py-2">{r.hours === null ? "—" : fmtHours(r.hours)}</td>
-                <td className="px-3 py-2">{r.hoursPerPass === null ? "—" : r.hoursPerPass.toFixed(2)}</td>
-                <td className="px-3 py-2">{r.hoursPerReviewedTask === null ? "—" : r.hoursPerReviewedTask.toFixed(2)}</td>
-                <td className="px-3 py-2">{r.passesPerTask === null ? "—" : r.passesPerTask.toFixed(2)}</td>
+              <tr key={r.name}>
+                <td className="whitespace-nowrap">{r.name}</td>
+                <td className="num">{fmtNum(r.unitsT1)}</td>
+                <td className="num">{fmtNum(r.units7d, 2)}</td>
+                <td className="num">{fmtNum(r.units)}</td>
+                <td className="num">{fmtNum(r.reviewedTasks)}</td>
+                <td className="num">{r.hours === null ? "—" : fmtHours(r.hours)}</td>
+                <td className="num">{r.hoursPerPass === null ? "—" : r.hoursPerPass.toFixed(2)}</td>
+                <td className="num">{r.hoursPerReviewedTask === null ? "—" : r.hoursPerReviewedTask.toFixed(2)}</td>
+                <td className="num">{r.passesPerTask === null ? "—" : r.passesPerTask.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-700">
-              <td className="px-3 py-2">Total ({filtered.length})</td>
-              <td className="px-3 py-2">{fmtNum(totals.unitsT1)}</td>
-              <td className="px-3 py-2">—</td>
-              <td className="px-3 py-2">{fmtNum(totals.units)}</td>
-              <td className="px-3 py-2">{fmtNum(totals.reviewedTasks)}</td>
-              <td className="px-3 py-2">{fmtHours(totals.hours)}</td>
-              <td className="px-3 py-2">{totals.units > 0 ? (totals.hours / totals.units).toFixed(2) : "—"}</td>
-              <td className="px-3 py-2">{totals.reviewedTasks > 0 ? (totals.hours / totals.reviewedTasks).toFixed(2) : "—"}</td>
-              <td className="px-3 py-2">{totals.reviewedTasks > 0 ? (totals.units / totals.reviewedTasks).toFixed(2) : "—"}</td>
+            <tr className="row-total">
+              <td>Total ({filtered.length})</td>
+              <td className="num">{fmtNum(totals.unitsT1)}</td>
+              <td className="num">—</td>
+              <td className="num">{fmtNum(totals.units)}</td>
+              <td className="num">{fmtNum(totals.reviewedTasks)}</td>
+              <td className="num">{fmtHours(totals.hours)}</td>
+              <td className="num">{totals.units > 0 ? (totals.hours / totals.units).toFixed(2) : "—"}</td>
+              <td className="num">{totals.reviewedTasks > 0 ? (totals.hours / totals.reviewedTasks).toFixed(2) : "—"}</td>
+              <td className="num">{totals.reviewedTasks > 0 ? (totals.units / totals.reviewedTasks).toFixed(2) : "—"}</td>
             </tr>
           </tfoot>
         </table>
@@ -236,15 +235,15 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
   );
   const { sorted, key, dir, toggle } = useSort(filtered, "hours");
   const view = sorted.slice(page * PAGE, page * PAGE + PAGE);
-  if (rows.length === 0) return <div className="p-6 text-sm text-slate-400">No data available for the selected filters.</div>;
+  if (rows.length === 0) return <div className="card-pad note">No data available for the selected filters.</div>;
   return (
     <div>
       <div className="flex items-center justify-between px-3 py-2">
         <SearchBox value={q} onChange={(v) => { setQ(v); setPage(0); }} />
-        <span className="text-xs text-slate-400">{filtered.length} experts</span>
+        <span className="note">{filtered.length} experts</span>
       </div>
-      <div className="max-h-[520px] overflow-auto">
-        <table className="w-full min-w-[760px] text-sm">
+      <div className="table-scroll max-h-[520px] overflow-auto">
+        <table className="data w-full min-w-[760px]">
           <thead>
             <tr>
               <Th onClick={() => toggle("name")} active={key === "name"} dir={dir}>Expert</Th>
@@ -256,12 +255,12 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
           </thead>
           <tbody>
             {view.map((r) => (
-              <tr key={`${r.name}-${r.email}`} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{r.name}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-slate-500">{r.email ?? "—"}</td>
-                <td className="px-3 py-2">{fmtHours(r.hours)}</td>
-                <td className="px-3 py-2">{r.payable === null ? <span className="text-slate-400">No rate on file</span> : fmtMoney(r.payable)}</td>
-                <td className="whitespace-nowrap px-3 py-2">{r.lastActive ? fmtDayLong(r.lastActive) : "—"}</td>
+              <tr key={`${r.name}-${r.email}`}>
+                <td className="whitespace-nowrap">{r.name}</td>
+                <td className="whitespace-nowrap" style={{ color: "var(--ink-2)" }}>{r.email ?? "—"}</td>
+                <td className="num">{fmtHours(r.hours)}</td>
+                <td className="num">{r.payable === null ? <span style={{ color: "var(--ink-3)", fontFamily: "var(--font-body)" }}>No rate on file</span> : fmtMoney(r.payable)}</td>
+                <td className="num whitespace-nowrap">{r.lastActive ? fmtDayLong(r.lastActive) : "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -276,7 +275,7 @@ export function RosterTable({ rows }: { rows: RosterRow[] }) {
 
 function winCells(w: WindowValues, fmt: (n: number | null) => string) {
   return [w.today, w.t1, w.avg3, w.avg7, w.total].map((v, i) => (
-    <td key={i} className="px-3 py-2 text-right tabular-nums">{fmt(v)}</td>
+    <td key={i} className={i === 0 ? "num is-partial" : "num"} data-emph={i === 3 ? "" : undefined}>{fmt(v)}</td>
   ));
 }
 
@@ -311,30 +310,32 @@ export function PerfSummaryTable({ perf }: { perf: PerfSummary }) {
     },
   ];
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-sm">
+    <div className="table-scroll">
+      <table className="data w-full min-w-[760px]">
         <thead>
           <tr>
             <Th>Metric</Th>
-            <Th>Today (partial)</Th>
+            <Th>Today *</Th>
             <Th>Yesterday</Th>
-            <Th>Avg/day · 3d</Th>
-            <Th>Avg/day · 7d</Th>
+            <Th>3-day</Th>
+            <Th>7-day</Th>
             <Th>All time / range</Th>
           </tr>
         </thead>
         <tbody>
           {groups.map((g) => (
             [
-              <tr key={g.label} className="border-t border-slate-200 bg-slate-50/60">
-                <td colSpan={6} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+              <tr key={g.label} className="group-row">
+                <td colSpan={6} className="!text-left">
                   {g.label}
-                  {g.ratio ? <span className="ml-2 normal-case font-normal">window ratio (summed hours ÷ summed tasks), not a per-day average — 3-day / 7-day columns</span> : null}
+                  {g.ratio
+                    ? <span className="ml-2 normal-case font-normal">window ratio (summed hours ÷ summed tasks), not a per-day average</span>
+                    : <span className="ml-2 normal-case font-normal">3-day / 7-day columns are per-day averages over complete days</span>}
                 </td>
               </tr>,
               ...g.rows.map((r) => (
-                <tr key={r.name} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{r.name}</td>
+                <tr key={r.name}>
+                  <td className="whitespace-nowrap">{r.name}</td>
                   {winCells(r.w, r.fmt)}
                 </tr>
               )),
@@ -361,21 +362,21 @@ export function PipelineDomainTable({ rows }: { rows: PipelineDomainRow[] }) {
     }
     return o;
   }, [rows]);
-  if (rows.length === 0) return <div className="p-6 text-sm text-slate-400">No tasks in this range. Try a wider date range.</div>;
+  if (rows.length === 0) return <div className="card-pad note">No tasks in this range. Try a wider date range.</div>;
   const cells = (r: { pending: number; awaitingReview: number; inReview: number; qa: number; openWork: number; approved: number }, pct: number | null) => (
     <>
-      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.pending)}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.awaitingReview)}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.inReview)}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.qa)}</td>
-      <td className="border-r border-slate-200 px-3 py-2 text-right font-semibold tabular-nums">{fmtNum(r.openWork)}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.approved)}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{pct === null ? "—" : fmtPct(pct)}</td>
+      <td className="num">{fmtNum(r.pending)}</td>
+      <td className="num">{fmtNum(r.awaitingReview)}</td>
+      <td className="num">{fmtNum(r.inReview)}</td>
+      <td className="num">{fmtNum(r.qa)}</td>
+      <td className="num" data-divider="">{fmtNum(r.openWork)}</td>
+      <td className="num">{fmtNum(r.approved)}</td>
+      <td className="num">{pct === null ? "—" : fmtPct(pct)}</td>
     </>
   );
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[820px] text-sm">
+    <div className="table-scroll">
+      <table className="data w-full min-w-[820px]">
         <thead>
           <tr>
             <Th>Domain</Th>
@@ -389,19 +390,19 @@ export function PipelineDomainTable({ rows }: { rows: PipelineDomainRow[] }) {
           </tr>
         </thead>
         <tbody>
-          <tr className="border-t-2 border-b border-slate-300 bg-slate-50 font-semibold text-slate-800">
-            <td className="px-3 py-2">Overall</td>
+          <tr className="row-overall">
+            <td>Overall</td>
             {cells(overall, overall.openWork > 0 ? 1 : null)}
           </tr>
           {rows.map((r) => (
-            <tr key={r.domain} className="border-t border-slate-100 hover:bg-slate-50">
-              <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{r.domain}</td>
+            <tr key={r.domain}>
+              <td className="whitespace-nowrap">{r.domain}</td>
               {cells(r, r.pctOfOpenWork)}
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="px-3 py-2 text-[11px] text-slate-400">
+      <p className="note px-3 py-2">
         Open Work = Pending + Awaiting Review + In Review + QA. Approved is cumulative completed work and is kept out of the open-work total.
       </p>
     </div>
@@ -412,9 +413,57 @@ export function PipelineDomainTable({ rows }: { rows: PipelineDomainRow[] }) {
 
 function Bar({ pct }: { pct: number | null }) {
   return (
-    <div className="relative min-w-[90px]">
-      <div className="absolute inset-y-1 left-0 rounded bg-amber-100" style={{ width: `${Math.min(100, (pct ?? 0) * 100)}%` }} />
-      <span className="relative px-1 tabular-nums">{pct === null ? "—" : fmtPct(pct)}</span>
+    <div className="share min-w-[90px]" style={{ "--pct": Math.min(100, (pct ?? 0) * 100) } as React.CSSProperties}>
+      <span className="num px-1">{pct === null ? "—" : fmtPct(pct)}</span>
+    </div>
+  );
+}
+
+function SmallMultiple({
+  title,
+  rows,
+  value,
+  fmt,
+  refValue,
+  refLabel,
+}: {
+  title: string;
+  rows: DomainRow[];
+  value: (r: DomainRow) => number | null;
+  fmt: (n: number) => string;
+  refValue?: number | null;
+  refLabel?: string;
+}) {
+  const items = rows
+    .map((r) => ({ domain: r.domain, v: value(r) }))
+    .filter((x): x is { domain: string; v: number } => x.v !== null)
+    .sort((a, b) => b.v - a.v);
+  if (items.length === 0) return null;
+  const max = Math.max(...items.map((x) => x.v), refValue ?? 0);
+  return (
+    <div>
+      <div className="label mb-2">{title}</div>
+      <div className="relative space-y-1">
+        {refValue !== null && refValue !== undefined && max > 0 ? (
+          <div
+            className="absolute bottom-0 top-0 z-10 border-l border-dashed"
+            style={{ left: `calc(96px + (100% - 96px - 56px) * ${refValue / max})`, borderColor: "var(--watch)" }}
+            title={`${refLabel ?? "Overall"}: ${fmt(refValue)}`}
+          />
+        ) : null}
+        {items.map((x) => (
+          <div key={x.domain} className="flex items-center gap-2">
+            <span className="w-[88px] shrink-0 truncate text-xs" style={{ color: "var(--ink-2)" }}>{x.domain}</span>
+            <div className="h-4 flex-1">
+              <div className="h-full rounded-sm" style={{ width: `${max > 0 ? (x.v / max) * 100 : 0}%`, background: "var(--series-daily, #9AA4B8)" }} />
+            </div>
+            <span className="num w-[52px] shrink-0 text-xs">{fmt(x.v)}</span>
+          </div>
+        ))}
+      </div>
+      {refValue !== null && refValue !== undefined ? (
+        <div className="note mt-1">{refLabel ?? "Overall"} = {fmt(refValue)} (dashed line)</div>
+      ) : null}
     </div>
   );
 }
@@ -438,15 +487,15 @@ export function DomainScorecard({ rows, drills }: { rows: DomainRow[]; drills: D
     }
     return o;
   }, [rows]);
-  if (rows.length === 0) return <div className="p-6 text-sm text-slate-400">No tasks in this range. Try a wider date range.</div>;
+  if (rows.length === 0) return <div className="card-pad note">No tasks in this range. Try a wider date range.</div>;
   const drill = open !== null ? drills.find((d) => d.domain === open) : undefined;
   const dp2 = (n: number | null) => (n === null ? "—" : n.toFixed(2));
   const h1 = (n: number | null) => (n === null ? "—" : fmtNum(n, 1));
   const pc = (n: number | null) => fmtPct(n);
   return (
     <div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[1080px] text-sm">
+      <div className="table-scroll">
+        <table className="data sticky-col w-full min-w-[1080px]">
           <thead>
             <tr>
               <Th onClick={() => toggle("domain")} active={key === "domain"} dir={dir}>Domain</Th>
@@ -461,55 +510,68 @@ export function DomainScorecard({ rows, drills }: { rows: DomainRow[]; drills: D
             </tr>
           </thead>
           <tbody>
-            <tr className="border-t-2 border-b border-slate-300 bg-slate-50 font-semibold text-slate-800">
-              <td className="px-3 py-2">Overall</td>
-              <td className="px-3 py-2 text-right tabular-nums">{fmtNum(overall.approved)}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{fmtNum(overall.written)}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{fmtNum(overall.reviewed)}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{fmtNum(overall.totalHours, 1)}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{overall.approved > 0 ? (overall.totalHours / overall.approved).toFixed(2) : "—"}</td>
-              <td className="px-3 py-2 text-right tabular-nums">{overall.oneShotDen > 0 ? fmtPct(overall.oneShotNum / overall.oneShotDen) : "—"}</td>
-              <td className="px-3 py-2 text-right tabular-nums">100%</td>
-              <td className="px-3 py-2 text-right tabular-nums">100%</td>
+            <tr className="row-overall">
+              <td>Overall</td>
+              <td className="num">{fmtNum(overall.approved)}</td>
+              <td className="num">{fmtNum(overall.written)}</td>
+              <td className="num">{fmtNum(overall.reviewed)}</td>
+              <td className="num">{fmtNum(overall.totalHours, 1)}</td>
+              <td className="num">{overall.approved > 0 ? (overall.totalHours / overall.approved).toFixed(2) : "—"}</td>
+              <td className="num">{overall.oneShotDen > 0 ? fmtPct(overall.oneShotNum / overall.oneShotDen) : "—"}</td>
+              <td className="num">100%</td>
+              <td className="num">100%</td>
             </tr>
             {sorted.map((r) => (
               <tr
                 key={r.domain}
                 onClick={() => setOpen(open === r.domain ? null : r.domain)}
-                className={`cursor-pointer border-t border-slate-100 hover:bg-slate-50 ${open === r.domain ? "bg-amber-50/60" : ""}`}
+                className="cursor-pointer"
+                style={open === r.domain ? { background: "var(--accent-soft)" } : undefined}
               >
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">
-                  <span className="mr-1 text-slate-400">{open === r.domain ? "▾" : "▸"}</span>
+                <td className="whitespace-nowrap">
+                  <span className="mr-1" style={{ color: "var(--ink-3)" }}>{open === r.domain ? "▾" : "▸"}</span>
                   {r.domain}
                 </td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.approved)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.written)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.reviewed)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtNum(r.totalHours, 1)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{dp2(r.overallAht)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{pc(r.oneShot)}</td>
-                <td className="px-3 py-2 text-right"><Bar pct={r.pctOfApproved} /></td>
-                <td className="px-3 py-2 text-right"><Bar pct={r.pctOfHours} /></td>
+                <td className="num">{fmtNum(r.approved)}</td>
+                <td className="num">{fmtNum(r.written)}</td>
+                <td className="num">{fmtNum(r.reviewed)}</td>
+                <td className="num">{fmtNum(r.totalHours, 1)}</td>
+                <td className="num">{dp2(r.overallAht)}</td>
+                <td className="num">{pc(r.oneShot)}</td>
+                <td className="num"><Bar pct={r.pctOfApproved} /></td>
+                <td className="num"><Bar pct={r.pctOfHours} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="px-3 py-2 text-[11px] text-slate-400">
+      <p className="note px-3 py-2">
         Overall row recomputed from summed numerators and denominators — never averaged across domains. Domain hours are allocated by joining
         each person&apos;s recorded hours to their Studio activity per day. Click a domain row for the window drill-down.
       </p>
+      <div className="grid grid-cols-1 gap-6 border-t px-4 py-4 md:grid-cols-3" style={{ borderColor: "var(--rule)" }}>
+        <SmallMultiple title="Approved (weighted)" rows={rows} value={(r) => r.approved} fmt={(n) => fmtNum(n, 1)} />
+        <SmallMultiple title="Total Hours" rows={rows} value={(r) => r.totalHours} fmt={(n) => fmtNum(n, 1)} />
+        <SmallMultiple
+          title="Total Hours per Approved Task — lower is better"
+          rows={rows}
+          value={(r) => r.overallAht}
+          fmt={(n) => n.toFixed(2)}
+          refValue={overall.approved > 0 ? overall.totalHours / overall.approved : null}
+          refLabel="Overall"
+        />
+      </div>
       {drill ? (
-        <div className="mx-3 mb-3 rounded-xl border border-amber-200 bg-white">
-          <h4 className="px-3 pt-2 text-sm font-semibold text-slate-700">{drill.domain} — by window</h4>
-          <table className="w-full min-w-[720px] text-sm">
+        <div className="card mx-3 mb-3 overflow-hidden">
+          <h4 className="px-3 pt-2 text-sm font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--ink)" }}>{drill.domain} — by window</h4>
+          <table className="data w-full min-w-[720px]">
             <thead>
               <tr>
                 <Th>Metric</Th>
-                <Th>Today (partial)</Th>
+                <Th>Today *</Th>
                 <Th>Yesterday</Th>
-                <Th>Avg/day · 3d</Th>
-                <Th>Avg/day · 7d</Th>
+                <Th>3-day</Th>
+                <Th>7-day</Th>
                 <Th>All time / range</Th>
               </tr>
             </thead>
@@ -528,14 +590,14 @@ export function DomainScorecard({ rows, drills }: { rows: DomainRow[]; drills: D
                   ["Clean Pass Rate", drill.oneShot, pc],
                 ] as [string, WindowValues, (n: number | null) => string][]
               ).map(([name, w, fmt]) => (
-                <tr key={name} className="border-t border-slate-100">
-                  <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-700">{name}</td>
+                <tr key={name}>
+                  <td className="whitespace-nowrap">{name}</td>
                   {winCells(w, fmt)}
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="px-3 py-2 text-[11px] text-slate-400">
+          <p className="note px-3 py-2">
             Efficiency and rate rows are window ratios (summed numerator ÷ summed denominator), so the 3d / 7d columns are the window figure, not a per-day average.
           </p>
         </div>

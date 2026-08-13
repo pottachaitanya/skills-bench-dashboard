@@ -17,8 +17,15 @@ import {
 import type { DailyPoint, StageCount } from "@/lib/typesV3";
 import { fmtDay, fmtDayLong, fmtNum } from "./formatV3";
 
-const GRID = "#e2e8f0";
-const AXIS = { fontSize: 11, fill: "#64748b" };
+// Design-system chart tokens: single ink tone for daily series, accent for the
+// 7-day trend, semantic green reserved for Approved. No multi-hue palettes.
+const GRID = "#E4E7EC";
+const AXIS = { fontSize: 11, fill: "#7A8496", fontFamily: "var(--font-data)" };
+const DAILY = "#9AA4B8";
+const TREND = "#4338CA";
+const NAVY = "#141A33";
+const PASS = "#0F7A5A";
+const PASS_DAILY = "#8FBFAF";
 
 function Empty() {
   return (
@@ -80,10 +87,10 @@ export function ThroughputChart({ data }: { data: DailyPoint[] }) {
       data={data}
       unit="tasks"
       series={[
-        { key: "submitted", name: "Tasks Submitted (daily)", color: "#3b82f6", strong: false },
-        { key: "submitted7d", name: "Tasks Submitted (7d avg)", color: "#1d4ed8", strong: true },
-        { key: "approved", name: "Tasks Approved (daily)", color: "#22c55e", strong: false },
-        { key: "approved7d", name: "Tasks Approved (7d avg)", color: "#15803d", strong: true },
+        { key: "submitted", name: "Tasks Written (daily)", color: DAILY, strong: false },
+        { key: "submitted7d", name: "Tasks Written (7-day average)", color: TREND, strong: true },
+        { key: "approved", name: "Tasks Approved (daily)", color: PASS_DAILY, strong: false },
+        { key: "approved7d", name: "Tasks Approved (7-day average)", color: PASS, strong: true },
       ]}
     />
   );
@@ -95,10 +102,10 @@ export function UnitsChart({ data }: { data: DailyPoint[] }) {
       data={data}
       unit="units"
       series={[
-        { key: "writerUnits", name: "Writer Units (daily)", color: "#8b5cf6", strong: false },
-        { key: "writerUnits7d", name: "Writer Units (7d avg)", color: "#6d28d9", strong: true },
-        { key: "reviewUnits", name: "Review Units (daily)", color: "#f59e0b", strong: false },
-        { key: "reviewUnits7d", name: "Review Units (7d avg)", color: "#b45309", strong: true },
+        { key: "writerUnits", name: "Submissions (daily)", color: DAILY, strong: false },
+        { key: "writerUnits7d", name: "Submissions (7-day average)", color: TREND, strong: true },
+        { key: "reviewUnits", name: "Review Passes (daily)", color: "#B9BFCC", strong: false },
+        { key: "reviewUnits7d", name: "Review Passes (7-day average)", color: NAVY, strong: true },
       ]}
     />
   );
@@ -110,8 +117,8 @@ export function HoursChart({ data }: { data: DailyPoint[] }) {
       data={data}
       unit="h"
       series={[
-        { key: "hours", name: "Hours Recorded (daily)", color: "#0ea5e9", strong: false },
-        { key: "hours7d", name: "Hours Recorded (7d avg)", color: "#0369a1", strong: true },
+        { key: "hours", name: "Hours Logged (daily)", color: DAILY, strong: false },
+        { key: "hours7d", name: "Hours Logged (7-day average)", color: TREND, strong: true },
       ]}
     />
   );
@@ -128,29 +135,30 @@ export function SpendChart({ data }: { data: DailyPoint[] }) {
         <Tooltip
           labelFormatter={(d) => fmtDayLong(String(d))}
           formatter={(v, name) => [
-            typeof v === "number" ? v.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }) : "—",
+            typeof v === "number" ? v.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—",
             String(name),
           ]}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Line type="monotone" dataKey="payable" name="Payable (daily)" stroke="#10b981" strokeWidth={1.25} strokeOpacity={0.45} dot={false} />
-        <Line type="monotone" dataKey="payable7d" name="Payable (7d avg)" stroke="#047857" strokeWidth={2.5} dot={false} connectNulls={false} />
+        <Line type="monotone" dataKey="payable" name="Payable (daily)" stroke={DAILY} strokeWidth={1.25} strokeOpacity={0.45} dot={false} />
+        <Line type="monotone" dataKey="payable7d" name="Payable (7-day average)" stroke={TREND} strokeWidth={2.5} dot={false} connectNulls={false} />
       </LineChart>
     </ResponsiveContainer>
   );
 }
 
+// One fixed colour per stage, reused identically everywhere the stage appears.
 const STAGE_COLORS: Record<string, string> = {
-  Pending: "#94a3b8",
-  "In Progress": "#a8a29e",
-  Unclaimed: "#cbd5e1",
-  "Awaiting Review": "#3b82f6",
-  "In Review": "#f59e0b",
-  "QA Awaiting Review": "#c084fc",
-  "QA In Review": "#a855f7",
-  "In QC": "#d946ef",
-  "Needs QC Revision": "#f43f5e",
-  Approved: "#22c55e",
+  Pending: "#A9B2C4",
+  "In Progress": "#A9B2C4",
+  Unclaimed: "#C4CAD6",
+  "Awaiting Review": "#7C88A3",
+  "In Review": "#4C5B7D",
+  "QA Awaiting Review": "#2E3A5C",
+  "QA In Review": "#2E3A5C",
+  "In QC": "#2E3A5C",
+  "Needs QC Revision": "#B4402F",
+  Approved: "#0F7A5A",
 };
 
 export function PipelineChart({ stages }: { stages: StageCount[] }) {
@@ -162,10 +170,10 @@ export function PipelineChart({ stages }: { stages: StageCount[] }) {
         <XAxis dataKey="stage" tick={{ ...AXIS, fontSize: 10 }} interval={0} angle={-18} textAnchor="end" height={52} />
         <YAxis tick={AXIS} width={48} />
         <Tooltip formatter={(v) => [typeof v === "number" ? `${fmtNum(v, 1)} weighted tasks` : "—", "Count"]} />
-        <Bar dataKey="units" name="Weighted tasks" radius={[4, 4, 0, 0]} fill="#3b82f6" isAnimationActive={false}>
-          <LabelList dataKey="units" position="top" style={{ fontSize: 11, fill: "#334155" }} formatter={(v) => fmtNum(Number(v), 1)} />
+        <Bar dataKey="units" name="Weighted tasks" radius={[4, 4, 0, 0]} fill={DAILY} isAnimationActive={false}>
+          <LabelList dataKey="units" position="top" style={{ fontSize: 11, fill: NAVY, fontFamily: "var(--font-data)" }} formatter={(v) => fmtNum(Number(v), 1)} />
           {stages.map((s) => (
-            <Cell key={s.stage} fill={STAGE_COLORS[s.stage] ?? "#3b82f6"} />
+            <Cell key={s.stage} fill={STAGE_COLORS[s.stage] ?? DAILY} />
           ))}
         </Bar>
       </BarChart>

@@ -1,0 +1,449 @@
+
+/* Font families are provided by next/font in layout.tsx as
+   --font-display / --font-body / --font-data (self-hosted, no @import). */
+
+/* --------------------------------------------------------------------------
+   2. TOKENS
+   Palette is one navy base, one indigo accent, and three semantic colours
+   that are NEVER used decoratively. If a green appears on this page it means
+   "approved". That rule is the whole colour system.
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Surfaces */
+  --paper:        #F7F8FA;   /* page background */
+  --surface:      #FFFFFF;   /* cards, tables */
+  --surface-sunk: #F2F4F8;   /* group header rows, table headers */
+  --navy:         #141A33;   /* hero band, darkest ink */
+  --navy-soft:    #232A52;   /* hero band gradient stop */
+
+  /* Ink */
+  --ink:          #141A33;   /* numbers, headings */
+  --ink-2:        #4A5468;   /* body text */
+  --ink-3:        #7A8496;   /* labels, captions, axes */
+  --ink-inv:      #FFFFFF;
+
+  /* Lines */
+  --rule:         #E4E7EC;   /* hairlines, gridlines */
+  --rule-strong:  #C9CFDA;   /* group dividers, table edges */
+
+  /* Accent — one only */
+  --accent:       #4338CA;
+  --accent-soft:  #EEF0FF;   /* active column tint, selected toggle */
+
+  /* Semantic — reserved meanings, never decoration */
+  --pass:         #0F7A5A;   /* approved / passed */
+  --pass-soft:    #E6F4EF;
+  --flag:         #B4402F;   /* sent back / rework */
+  --flag-soft:    #FBEDEA;
+  --watch:        #B4690E;   /* quality attention: one-shot below target */
+  --watch-soft:   #FDF3E3;
+
+  /* Space — 8px grid */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  /* Radius — small and consistent. No pills except status chips. */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-pill: 999px;
+
+  /* Elevation — one shadow, used sparingly */
+  --shadow: 0 1px 2px rgba(20, 26, 51, .04), 0 8px 24px rgba(20, 26, 51, .06);
+
+  /* Type scale */
+  --t-hero:  34px;
+  --t-h2:    22px;
+  --t-h3:    16px;
+  --t-kpi:   30px;
+  --t-body:  14px;
+  --t-data:  13px;
+  --t-label: 11px;
+
+  --row-h: 44px;
+  --nav-h: 60px;
+}
+
+/* --------------------------------------------------------------------------
+   3. BASE
+   -------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* --------------------------------------------------------------------------
+   4. TYPE
+
+   The one rule that matters most: every numeral on this page is mono with
+   tabular figures and right-aligned. Digits then occupy identical width, so
+   a column of AHTs can be scanned vertically without reading each value.
+   -------------------------------------------------------------------------- */
+
+.display,
+.hero-title,
+.section-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -.02em;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.hero-title    { font-size: var(--t-hero); color: var(--ink-inv); }
+.section-title { font-size: var(--t-h2); }
+
+/* Eyebrow: the section number. Justified because the sections ARE an ordered
+   reading path — overview, pipeline, experts, quality, cost, domains. */
+.eyebrow {
+  font-family: var(--font-data);
+  font-size: var(--t-label);
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: block;
+  margin-bottom: var(--s2);
+}
+
+/* Column headers, group headers, units, chip labels */
+.label {
+  font-family: var(--font-body);
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* EVERY number uses this. */
+.num {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1, 'zero' 1;  /* slashed zero: 0 vs O */
+  font-weight: 500;
+  font-size: var(--t-data);
+  color: var(--ink);
+  text-align: right;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.num--kpi   { font-size: var(--t-kpi); font-weight: 600; letter-spacing: -.02em; }
+.num--muted { color: var(--ink-3); font-weight: 400; }
+
+/* Units live in the header, not the cell. When a unit must sit inline, it is
+   demoted so it never competes with the digits. */
+.unit {
+  font-family: var(--font-body);
+  font-size: .72em;
+  font-weight: 500;
+  color: var(--ink-3);
+  margin-left: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   5. LAYOUT
+   -------------------------------------------------------------------------- */
+
+.wrap { max-width: 1400px; margin: 0 auto; padding: 0 var(--s5); }
+
+.section { padding: var(--s7) 0; scroll-margin-top: calc(var(--nav-h) + var(--s4)); }
+.section + .section { border-top: 1px solid var(--rule); }
+.section-head { margin-bottom: var(--s5); }
+.section-sub  { color: var(--ink-3); font-size: var(--t-body); margin: var(--s2) 0 0; max-width: 62ch; }
+
+/* Sticky nav — scroll-margin-top above keeps anchored sections clear of it */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  height: var(--nav-h);
+  display: flex; align-items: center; gap: var(--s5);
+  padding: 0 var(--s5);
+  background: rgba(255, 255, 255, .88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+}
+.nav-links { display: flex; gap: var(--s1); margin-right: auto; }
+.nav-link {
+  font-size: var(--t-body); font-weight: 500; color: var(--ink-3);
+  text-decoration: none; padding: 6px var(--s3); border-radius: var(--r-sm);
+  transition: color .12s ease, background .12s ease;
+}
+.nav-link:hover { color: var(--ink); background: var(--surface-sunk); }
+.nav-link[aria-current='true'] { color: var(--accent); background: var(--accent-soft); }
+
+/* Hero band — the one place with a gradient, and it stays quiet */
+.hero {
+  background: linear-gradient(105deg, var(--navy) 0%, var(--navy-soft) 100%);
+  color: var(--ink-inv);
+  padding: var(--s6) var(--s6) var(--s7);
+  border-radius: var(--r-md) var(--r-md) 0 0;
+}
+.hero .label { color: rgba(255, 255, 255, .62); }
+.hero-sub { color: rgba(255, 255, 255, .74); margin: var(--s2) 0 0; }
+
+/* --------------------------------------------------------------------------
+   6. CARDS + KPI
+   -------------------------------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow);
+}
+.card-pad { padding: var(--s5); }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s4); }
+.kpi { padding: var(--s5); }
+.kpi .label { display: block; margin-bottom: var(--s3); }
+.kpi-value { display: flex; align-items: baseline; gap: var(--s2); }
+
+/* Secondary figures under a KPI: yesterday / 7-day / all time */
+.kpi-meta { display: flex; gap: var(--s4); margin-top: var(--s4); padding-top: var(--s3); border-top: 1px solid var(--rule); }
+.kpi-meta-item { display: flex; flex-direction: column; gap: 2px; }
+.kpi-meta-item .label { font-size: 10px; letter-spacing: .06em; }
+
+/* --------------------------------------------------------------------------
+   7. TABLES — the core of this dashboard
+
+   Signature detail: no zebra striping. Stripes fight the semantic colours and
+   add noise a hairline already handles. Alignment does the work instead.
+   -------------------------------------------------------------------------- */
+
+.table-shell { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--r-md); overflow: hidden; box-shadow: var(--shadow); }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+table.data { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+table.data thead th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--surface-sunk);
+  border-bottom: 1px solid var(--rule-strong);
+  padding: var(--s3) var(--s4);
+  text-align: right;
+  font-family: var(--font-body);
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+table.data thead th:first-child { text-align: left; }
+
+/* Spanning group header (Throughput | Hours | Efficiency) */
+table.data thead tr.group th {
+  font-size: 10px; letter-spacing: .12em; color: var(--ink-3);
+  background: var(--surface); border-bottom: 1px solid var(--rule);
+  text-align: center; padding-top: var(--s3); padding-bottom: var(--s2);
+}
+table.data thead tr.group th[data-divider] { border-left: 1px solid var(--rule); }
+
+table.data tbody td {
+  height: var(--row-h);
+  padding: 0 var(--s4);
+  border-bottom: 1px solid var(--rule);
+  text-align: right;
+  vertical-align: middle;
+}
+table.data tbody td:first-child {
+  text-align: left;
+  font-weight: 500;
+  color: var(--ink);
+}
+table.data tbody tr:last-child td { border-bottom: 0; }
+table.data tbody tr:hover td { background: var(--surface-sunk); }
+
+/* Metric-group label row inside a metric-by-window table */
+tr.group-row td {
+  background: var(--surface-sunk);
+  height: 32px;
+  font-family: var(--font-body);
+  font-size: var(--t-label);
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Pinned overall row — the headline before the breakdown */
+tr.row-overall td {
+  background: var(--accent-soft);
+  border-bottom: 2px solid var(--rule-strong);
+  font-weight: 600;
+  color: var(--ink);
+}
+tr.row-overall td:first-child::before {
+  content: 'OVERALL';
+  font-family: var(--font-body); font-size: 10px; font-weight: 600;
+  letter-spacing: .1em; color: var(--accent); display: block;
+}
+
+/* Emphasised column (e.g. the 7-day window) */
+table.data td[data-emph], table.data th[data-emph] { background: var(--accent-soft); }
+table.data td[data-emph] { font-weight: 600; }
+
+/* Vertical divider between column groups */
+table.data td[data-divider], table.data th[data-divider] { border-left: 1px solid var(--rule); }
+
+/* Sticky first column for wide tables */
+table.data.sticky-col thead th:first-child,
+table.data.sticky-col tbody td:first-child {
+  position: sticky; left: 0; z-index: 3;
+  background: var(--surface);
+  border-right: 1px solid var(--rule);
+}
+table.data.sticky-col thead th:first-child { z-index: 4; background: var(--surface-sunk); }
+
+/* Footer totals — recomputed from summed numerators, never averaged */
+table.data tfoot td {
+  height: var(--row-h);
+  padding: 0 var(--s4);
+  background: var(--surface-sunk);
+  border-top: 2px solid var(--rule-strong);
+  text-align: right;
+  font-weight: 600;
+  color: var(--ink);
+}
+table.data tfoot td:first-child { text-align: left; }
+
+/* Inline share bar behind a cell: ranking visible without reading digits */
+.share { position: relative; }
+.share::before {
+  content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  height: 20px; width: calc(var(--pct, 0) * 1%);
+  background: var(--accent); opacity: .12; border-radius: 2px;
+}
+.share > * { position: relative; }
+
+/* Sortable header affordance */
+th[aria-sort] { cursor: pointer; user-select: none; }
+th[aria-sort]:hover { color: var(--ink); }
+th[aria-sort='descending']::after { content: ' ↓'; color: var(--accent); }
+th[aria-sort='ascending']::after  { content: ' ↑'; color: var(--accent); }
+
+/* --------------------------------------------------------------------------
+   8. CHIPS + CONTROLS
+   -------------------------------------------------------------------------- */
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px var(--s2);
+  border-radius: var(--r-pill);
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px; font-weight: 600;
+  background: var(--surface-sunk); color: var(--ink);
+}
+.chip--pass  { background: var(--pass-soft);  color: var(--pass); }
+.chip--flag  { background: var(--flag-soft);  color: var(--flag); }
+.chip--watch { background: var(--watch-soft); color: var(--watch); }
+
+/* Segmented toggle: Writer/Reviewer, 3d/7d/All time */
+.seg { display: inline-flex; padding: 2px; background: var(--surface-sunk); border: 1px solid var(--rule); border-radius: var(--r-sm); }
+.seg button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500; color: var(--ink-3);
+  padding: 6px var(--s3); border-radius: 3px;
+  transition: background .12s ease, color .12s ease;
+}
+.seg button:hover { color: var(--ink); }
+.seg button[aria-selected='true'] { background: var(--surface); color: var(--accent); box-shadow: 0 1px 2px rgba(20,26,51,.08); }
+
+.btn {
+  appearance: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  padding: 8px var(--s3);
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule-strong); border-radius: var(--r-sm);
+}
+.btn:hover { background: var(--surface-sunk); }
+.btn[aria-busy='true'] { color: var(--ink-3); pointer-events: none; }
+
+/* Date-filter readout: the active scope stays visible while scrolling */
+.scope { font-family: var(--font-data); font-size: 12px; color: var(--ink-3); }
+
+/* --------------------------------------------------------------------------
+   9. STATES
+
+   A true zero and a failed fetch must never look alike. Zero renders as a
+   number; absent data renders as an em dash.
+   -------------------------------------------------------------------------- */
+
+.is-empty { color: var(--ink-3); font-family: var(--font-data); text-align: right; }
+.is-empty::after { content: '—'; }
+
+.is-partial { position: relative; color: var(--ink-2); }
+.is-partial::after { content: ' *'; color: var(--watch); }
+
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-sunk) 25%, #EAEDF3 50%, var(--surface-sunk) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm); height: 12px;
+}
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+.note { font-size: 12px; color: var(--ink-3); margin-top: var(--s3); }
+.note--flag { color: var(--flag); }
+
+/* --------------------------------------------------------------------------
+   10. CHARTS
+   Single ink tone for the daily series, accent for the 7-day average.
+   No multi-hue palettes — the comparison is daily-vs-trend, not category.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --series-daily: #9AA4B8;
+  --series-trend: var(--accent);
+  --grid: var(--rule);
+}
+.axis text { font-family: var(--font-data); font-size: 11px; fill: var(--ink-3); }
+.axis line, .axis path, .grid line { stroke: var(--grid); shape-rendering: crispEdges; }
+.series-daily { fill: var(--series-daily); }
+.series-trend { stroke: var(--series-trend); stroke-width: 2; fill: none; }
+.ref-line { stroke: var(--watch); stroke-dasharray: 3 3; stroke-width: 1; }
+
+/* Stage bars keep one colour per stage, reused everywhere on the page */
+.bar-pending   { fill: #A9B2C4; }
+.bar-awaiting  { fill: #7C88A3; }
+.bar-review    { fill: #4C5B7D; }
+.bar-qa        { fill: #2E3A5C; }
+.bar-approved  { fill: var(--pass); }
+
+/* --------------------------------------------------------------------------
+   11. ACCESSIBILITY + RESPONSIVE
+   -------------------------------------------------------------------------- */
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+@media (max-width: 900px) {
+  :root { --t-hero: 26px; --t-h2: 19px; --t-kpi: 24px; --row-h: 40px; }
+  .nav { gap: var(--s3); overflow-x: auto; }
+  .section { padding: var(--s6) 0; }
+  /* Tables scroll rather than compress — never let digits wrap */
+  .table-scroll { overflow-x: auto; }
+  table.data td, table.data thead th { padding: 0 var(--s3); }
+}
+
+@media print {
+  .nav, .btn, .seg { display: none; }
+  .card, .table-shell { box-shadow: none; border-color: var(--rule-strong); }
+}
