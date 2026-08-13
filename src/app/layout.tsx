@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Skills Bench — Project Performance Dashboard",
+  title: "Skills Bench — Ops Dashboard",
   description:
-    "Writer productivity, review quality, throughput, hours, and spend for the Skills Bench campaign (Studio / Mercor)",
+    "Throughput, quality, per-person efficiency, and spend for the Skills Bench Studio project (Studio API + Mercor MCP)",
 };
 
 export default function RootLayout({

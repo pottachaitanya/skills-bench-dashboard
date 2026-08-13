@@ -9,6 +9,36 @@ Built with Next.js 15 (App Router) + TypeScript + Tailwind + Recharts. All
 data access happens server-side in `/api/dashboard`; no credentials or raw
 warehouse access is exposed to the client.
 
+## v3 — Ops Dashboard (current)
+
+The current UI (`/`) is the single-page, scroll-navigated Ops Dashboard served by
+`/api/dashboard/v3` from `data/snapshotV3.json`:
+
+- **Data split**: task stage transitions come from the full Studio task-history
+  crawl of the 10 configured worlds; recorded hours, pay rates, payable amounts,
+  and last-active come from the Mercor warehouse (MCP).
+- **×0.5 weighting**: every Studio task is one half of a with-skill/without-skill
+  pair, so all task counts and units are weighted `raw × 0.5` unconditionally.
+  Hours, rates, and percentages are never weighted; AHT uses the weighted
+  denominator (hours per weighted task).
+- **Time**: all days are `America/Los_Angeles` local days; today is excluded
+  everywhere and every range/chart ends at T-1. Rolling 7d averages use a 6-day
+  warm-up fetched before the selected start; warm-up days feed the averages but
+  are never plotted.
+- **Quality**: one-shot uses each task's full lifecycle (never truncated at the
+  range start) — an approved task counts as one-shot only if it has zero
+  backward transitions. Rework = 1 − one-shot.
+- **Stages**: the stage vocabulary and transition graph are discovered from the
+  data (printed by `npm run validate:v3`), including the QA stages
+  `QA Awaiting Review`, `QA In Review`, and `In QC`, which occur *after* an
+  initial approval in this project.
+- **Spend**: Payable is the actual payable amounts for the two SkillsBench
+  timers (`Skillsbench - Task`, `Task Review-SkillsBench`); bonuses and other
+  timers are excluded and reported separately. No bill rates exist for this
+  project, so Billable renders as `—`.
+
+Validate with `npm run validate:v3`.
+
 ## Setup
 
 ```bash

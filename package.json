@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "validate": "tsx scripts/validate.ts"
+    "validate": "tsx scripts/validate.ts",
+    "validate:v3": "tsx scripts/validateV3.ts"
   },
   "dependencies": {
     "next": "15.5.23",
