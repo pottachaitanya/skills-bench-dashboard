@@ -17,7 +17,7 @@ import type {
 import { WORLD_DOMAINS } from "./config";
 
 export const TIMEZONE = "America/Los_Angeles";
-export const WRITER_TIMER = "Skillsbench - Task";
+export const WRITER_TIMERS = ["Skillsbench - Task", "Alibaba-Skillsbench - Task", "SkillsBench-Pilot"];
 export const REVIEWER_TIMER = "Task Review-SkillsBench";
 
 // Every Studio task is one half of a with-skill / without-skill pair.
@@ -252,7 +252,7 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
       m.set(r.userId, (m.get(r.userId) ?? 0) + r.hours);
     }
   }
-  const skillsTimers = new Set([WRITER_TIMER, REVIEWER_TIMER]);
+  const skillsTimers = new Set([...WRITER_TIMERS, REVIEWER_TIMER]);
   const payableByDay = new Map<string, number>();
   const payableByUser = new Map<string, number>();
   const billableByUser = new Map<string, number>();
