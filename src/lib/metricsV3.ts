@@ -606,13 +606,38 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
     }
   }
 
-  // Each expert works a single domain: assign all of a user's hours to their
-  // primary domain — the one with the most Studio events (writer + review)
-  // across the whole range. Unmatched users stay "Unassigned".
+  // Each expert works a single domain. First choice is the contractor tag —
+  // the Mercor job title ("Writer Finance", "Reviewer Physics", ...). Users
+  // without a domain-bearing tag fall back to their dominant Studio domain
+  // (most writer + review events across the range); else "Unassigned".
+  const TAG_DOMAINS: Record<string, string> = {
+    "human resources": "HR",
+    "marketing / sales": "Marketing / Sales",
+    "computer science": "Computer Science",
+    finance: "Finance",
+    biology: "Biology",
+    law: "Law",
+    education: "Education",
+    chemistry: "Chemistry",
+    physics: "Physics",
+    mathematics: "Mathematics",
+  };
+  const tagDomainByUser = new Map<string, string>();
+  for (const r of snap.rates) {
+    if (!r.title || tagDomainByUser.has(r.userId)) continue;
+    const rest = r.title.replace(/^(Writer|Reviewer)\s+/i, "").trim().toLowerCase();
+    const dom = TAG_DOMAINS[rest];
+    if (dom) tagDomainByUser.set(r.userId, dom);
+  }
   const primaryDomainCache = new Map<string, string>();
   const primaryDomainOf = (userId: string): string => {
     const cached = primaryDomainCache.get(userId);
     if (cached) return cached;
+    const tagged = tagDomainByUser.get(userId);
+    if (tagged) {
+      primaryDomainCache.set(userId, tagged);
+      return tagged;
+    }
     const combined: DomainCount = new Map();
     for (const src of [writerEvByUser.get(userId), reviewEvByUser.get(userId)]) {
       if (src) for (const [dom, n] of src) combined.set(dom, (combined.get(dom) ?? 0) + n);
