@@ -17,7 +17,12 @@ import type {
 import { WORLD_DOMAINS } from "./config";
 
 export const TIMEZONE = "America/Los_Angeles";
-export const WRITER_TIMERS = ["Skillsbench - Task", "Alibaba-Skillsbench - Task", "SkillsBench-Pilot"];
+export const WRITER_TIMERS = [
+  "Skillsbench - Task",
+  "Alibaba-Skillsbench - Task",
+  "SkillsBench-Pilot",
+  "Skillsbench-General",
+];
 export const REVIEWER_TIMER = "Task Review-SkillsBench";
 
 // Every Studio task is one half of a with-skill / without-skill pair.
