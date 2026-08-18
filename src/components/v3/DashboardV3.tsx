@@ -470,7 +470,7 @@ export default function DashboardV3() {
             <div className="card kpi">
               <span className="label">
                 Payable to Experts
-                <Tip text="Actual payable amounts from Mercor MCP for the two SkillsBench timers, within the selected range. Bonus and non-SkillsBench-timer payouts are excluded and reported separately below." />
+                <Tip text="Every payable amount on the project from Mercor MCP within the selected range: timer-driven hours plus bonus payouts (which carry no timer or hours)." />
               </span>
               <div className="kpi-value">
                 <span className="num num--kpi">{fmtMoney(data.spendKpis.payable)}</span>
@@ -493,8 +493,8 @@ export default function DashboardV3() {
             <RosterTable rows={data.roster} />
           </div>
           <p className="note">
-            {fmtMoney(data.meta.otherPayable)} of additional project payouts fall outside the two SkillsBench timers (bonuses, pilot and precursor
-            timers) and are excluded from the Payable figures above.
+            Includes {fmtMoney(data.meta.otherPayable)} of bonus payouts, which carry no timer and no hours, so they do not affect the roster hours or
+            effective-rate columns.
           </p>
         </section>
 

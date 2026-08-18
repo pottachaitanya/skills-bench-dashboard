@@ -257,17 +257,16 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
       m.set(r.userId, (m.get(r.userId) ?? 0) + r.hours);
     }
   }
+  // Payable covers every payout row on the project: the timer-driven hours plus
+  // bonus rows, which carry no timer and no hours.
   const skillsTimers = new Set([...WRITER_TIMERS, REVIEWER_TIMER]);
   const payableByDay = new Map<string, number>();
   const payableByUser = new Map<string, number>();
   const billableByUser = new Map<string, number>();
-  let otherPayable = 0;
+  let bonusPayable = 0;
   let totalBillable = 0;
   for (const r of snap.spend) {
-    if (!skillsTimers.has(r.timer)) {
-      otherPayable += r.payable;
-      continue;
-    }
+    if (!skillsTimers.has(r.timer) && inRange(r.date)) bonusPayable += r.payable;
     if (!inWarm(r.date)) continue;
     payableByDay.set(r.date, (payableByDay.get(r.date) ?? 0) + r.payable);
     if (inRange(r.date)) {
@@ -900,7 +899,7 @@ export function computeDashboardV3(snap: SnapshotV3, filters: V3Filters, now: Da
       stageGraph,
       unmatchedActors: [...unmatchedActors].sort(),
       missingRateUsers,
-      otherPayable: round(otherPayable, 2),
+      otherPayable: round(bonusPayable, 2),
     },
     kpis: { hours: hoursKpi, ahtApproved: ahtKpi, oneShotRate: oneShotKpi },
     daily,
